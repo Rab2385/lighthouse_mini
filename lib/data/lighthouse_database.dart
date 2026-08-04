@@ -15,6 +15,9 @@ class LighthouseDatabase {
   final StoreRef<String, Map<String, Object?>> _habitEntriesStore =
       stringMapStoreFactory.store('habit_entries');
 
+  final StoreRef<String, Object?> _settingsStore =
+      StoreRef<String, Object?>('settings');
+
   Database? _database;
 
   Future<Database> get _db async {
@@ -29,7 +32,12 @@ class LighthouseDatabase {
 
     final snapshots = await _goodThingsStore.find(
       database,
-      finder: Finder(sortOrders: [SortOrder('date'), SortOrder('createdAt')]),
+      finder: Finder(
+        sortOrders: [
+          SortOrder('date'),
+          SortOrder('createdAt'),
+        ],
+      ),
     );
 
     return snapshots
@@ -40,7 +48,10 @@ class LighthouseDatabase {
   Future<void> saveGoodThing(GoodThing entry) async {
     final database = await _db;
 
-    await _goodThingsStore.record(entry.id).put(database, entry.toMap());
+    await _goodThingsStore.record(entry.id).put(
+          database,
+          entry.toMap(),
+        );
   }
 
   Future<void> deleteGoodThing(String id) async {
@@ -54,17 +65,25 @@ class LighthouseDatabase {
     final snapshots = await _habitsStore.find(
       database,
       finder: Finder(
-        sortOrders: [SortOrder('sortOrder'), SortOrder('createdAt')],
+        sortOrders: [
+          SortOrder('sortOrder'),
+          SortOrder('createdAt'),
+        ],
       ),
     );
 
-    return snapshots.map((snapshot) => Habit.fromMap(snapshot.value)).toList();
+    return snapshots
+        .map((snapshot) => Habit.fromMap(snapshot.value))
+        .toList();
   }
 
   Future<void> saveHabit(Habit habit) async {
     final database = await _db;
 
-    await _habitsStore.record(habit.id).put(database, habit.toMap());
+    await _habitsStore.record(habit.id).put(
+          database,
+          habit.toMap(),
+        );
   }
 
   Future<void> deleteHabit(String id) async {
@@ -75,11 +94,15 @@ class LighthouseDatabase {
 
       final relatedEntries = await _habitEntriesStore.find(
         transaction,
-        finder: Finder(filter: Filter.equals('habitId', id)),
+        finder: Finder(
+          filter: Filter.equals('habitId', id),
+        ),
       );
 
       for (final entry in relatedEntries) {
-        await _habitEntriesStore.record(entry.key).delete(transaction);
+        await _habitEntriesStore.record(entry.key).delete(
+              transaction,
+            );
       }
     });
   }
@@ -101,13 +124,45 @@ class LighthouseDatabase {
     final record = _habitEntriesStore.record(key);
 
     if (completed) {
-      await record.put(database, {
-        'habitId': habitId,
-        'date': date,
-        'completed': true,
-      });
+      await record.put(
+        database,
+        {
+          'habitId': habitId,
+          'date': date,
+          'completed': true,
+        },
+      );
     } else {
       await record.delete(database);
     }
+  }
+
+  Future<Map<String, Object?>> loadSettings() async {
+    final database = await _db;
+    final snapshots = await _settingsStore.find(database);
+
+    return {
+      for (final snapshot in snapshots)
+        snapshot.key: snapshot.value,
+    };
+  }
+
+  Future<void> saveSetting(
+    String key,
+    Object? value,
+  ) async {
+    final database = await _db;
+    await _settingsStore.record(key).put(database, value);
+  }
+
+  Future<void> clearAllData() async {
+    final database = await _db;
+
+    await database.transaction((transaction) async {
+      await _goodThingsStore.delete(transaction);
+      await _habitsStore.delete(transaction);
+      await _habitEntriesStore.delete(transaction);
+      await _settingsStore.delete(transaction);
+    });
   }
 }
