@@ -404,20 +404,36 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
       animation: widget.controller,
       builder: (context, child) {
         final habits = widget.controller.activeHabits;
+        final compact = widget.controller.habitCompactView;
 
         return Column(
           children: [
             MonthHeader(
               title: 'Habit Tracker',
-              subtitle: 'Gestern und heute sind immer sichtbar.',
+              subtitle: compact
+                  ? 'Gestern und heute – ein Tippen genügt.'
+                  : 'Der ganze Monat zum Nachtragen.',
               selectedMonth: _selectedMonth,
+              showMonthControls: !compact,
               onPreviousMonth: _showPreviousMonth,
               onNextMonth: _canShowNextMonth ? _showNextMonth : null,
               onToday: _goToToday,
               trailing: Wrap(
                 spacing: 8,
                 runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  _HabitViewToggle(
+                    compact: compact,
+                    onChanged: (value) {
+                      widget.controller.setHabitCompactView(value);
+                      if (!value) {
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _scrollGridToToday(),
+                        );
+                      }
+                    },
+                  ),
                   OutlinedButton.icon(
                     onPressed: _showArchivedHabits,
                     icon: const Icon(Icons.archive_outlined),
@@ -436,88 +452,370 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
             Expanded(
               child: habits.isEmpty
                   ? const Center(child: Text('Noch keine aktiven Habits.'))
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final colorScheme = Theme.of(context).colorScheme;
-                        final narrow = constraints.maxWidth < 560;
-
-                        final nameWidth = narrow ? 150.0 : 200.0;
-                        final pinnedWidth = narrow ? 44.0 : 54.0;
-                        final cellWidth = narrow ? 36.0 : 44.0;
-                        final totalWidth = narrow ? 56.0 : 86.0;
-
-                        _gridCellWidth = cellWidth;
-
-                        final bodyHeight =
-                            _kHeaderHeight + habits.length * _kRowHeight;
-
-                        return SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: colorScheme.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: colorScheme.outlineVariant,
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: SizedBox(
-                              height: bodyHeight,
-                              child: Material(
-                                type: MaterialType.transparency,
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _FrozenHabitColumn(
-                                      habits: habits,
-                                      controller: widget.controller,
-                                      nameWidth: nameWidth,
-                                      cellWidth: pinnedWidth,
-                                      bodyHeight: bodyHeight,
-                                      today: today,
-                                      yesterday: yesterday,
-                                      onEdit: (habit) =>
-                                          _showHabitDialog(habit: habit),
-                                    ),
-                                    Expanded(
-                                      child: SingleChildScrollView(
-                                        controller: _gridScrollController,
-                                        scrollDirection: Axis.horizontal,
-                                        child: SizedBox(
-                                          width: daysInMonth * cellWidth,
-                                          height: bodyHeight,
-                                          child: _MonthGridColumn(
-                                            habits: habits,
-                                            controller: widget.controller,
-                                            selectedMonth: _selectedMonth,
-                                            daysInMonth: daysInMonth,
-                                            todayDay: todayDay,
-                                            cellWidth: cellWidth,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    _TotalColumn(
-                                      habits: habits,
-                                      controller: widget.controller,
-                                      selectedMonth: _selectedMonth,
-                                      daysInMonth: daysInMonth,
-                                      width: totalWidth,
-                                      bodyHeight: bodyHeight,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                  : compact
+                  ? _HabitCompactList(
+                      habits: habits,
+                      controller: widget.controller,
+                      today: today,
+                      yesterday: yesterday,
+                      onEdit: (habit) => _showHabitDialog(habit: habit),
+                    )
+                  : _buildMonthTable(
+                      habits: habits,
+                      daysInMonth: daysInMonth,
+                      today: today,
+                      yesterday: yesterday,
+                      todayDay: todayDay,
                     ),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildMonthTable({
+    required List<Habit> habits,
+    required int daysInMonth,
+    required DateTime today,
+    required DateTime yesterday,
+    required int? todayDay,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final colorScheme = Theme.of(context).colorScheme;
+        final narrow = constraints.maxWidth < 560;
+
+        final nameWidth = narrow ? 150.0 : 200.0;
+        final pinnedWidth = narrow ? 44.0 : 54.0;
+        final cellWidth = narrow ? 36.0 : 44.0;
+        final totalWidth = narrow ? 56.0 : 86.0;
+
+        _gridCellWidth = cellWidth;
+
+        final bodyHeight = _kHeaderHeight + habits.length * _kRowHeight;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              height: bodyHeight,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _FrozenHabitColumn(
+                      habits: habits,
+                      controller: widget.controller,
+                      nameWidth: nameWidth,
+                      cellWidth: pinnedWidth,
+                      bodyHeight: bodyHeight,
+                      today: today,
+                      yesterday: yesterday,
+                      onEdit: (habit) => _showHabitDialog(habit: habit),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: _gridScrollController,
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: daysInMonth * cellWidth,
+                          height: bodyHeight,
+                          child: _MonthGridColumn(
+                            habits: habits,
+                            controller: widget.controller,
+                            selectedMonth: _selectedMonth,
+                            daysInMonth: daysInMonth,
+                            todayDay: todayDay,
+                            cellWidth: cellWidth,
+                          ),
+                        ),
+                      ),
+                    ),
+                    _TotalColumn(
+                      habits: habits,
+                      controller: widget.controller,
+                      selectedMonth: _selectedMonth,
+                      daysInMonth: daysInMonth,
+                      width: totalWidth,
+                      bodyHeight: bodyHeight,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The compact "Kompakt" / full "Monat" switch shown in the header.
+class _HabitViewToggle extends StatelessWidget {
+  const _HabitViewToggle({required this.compact, required this.onChanged});
+
+  final bool compact;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<bool>(
+      showSelectedIcon: false,
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      segments: const [
+        ButtonSegment(
+          value: true,
+          label: Text('Kompakt'),
+          icon: Icon(Icons.view_agenda_outlined),
+        ),
+        ButtonSegment(
+          value: false,
+          label: Text('Monat'),
+          icon: Icon(Icons.calendar_view_month_outlined),
+        ),
+      ],
+      selected: {compact},
+      onSelectionChanged: (selection) => onChanged(selection.first),
+    );
+  }
+}
+
+/// The default view: one calm row per habit with big Gestern / Heute toggles.
+class _HabitCompactList extends StatelessWidget {
+  const _HabitCompactList({
+    required this.habits,
+    required this.controller,
+    required this.today,
+    required this.yesterday,
+    required this.onEdit,
+  });
+
+  final List<Habit> habits;
+  final LighthouseController controller;
+  final DateTime today;
+  final DateTime yesterday;
+  final void Function(Habit habit) onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < habits.length; i++) ...[
+                  if (i > 0)
+                    Divider(height: 1, color: colorScheme.outlineVariant),
+                  _HabitCompactRow(
+                    habit: habits[i],
+                    controller: controller,
+                    today: today,
+                    yesterday: yesterday,
+                    onEdit: () => onEdit(habits[i]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HabitCompactRow extends StatelessWidget {
+  const _HabitCompactRow({
+    required this.habit,
+    required this.controller,
+    required this.today,
+    required this.yesterday,
+    required this.onEdit,
+  });
+
+  final Habit habit;
+  final LighthouseController controller;
+  final DateTime today;
+  final DateTime yesterday;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final monthTotal = controller.habitTotalForMonth(
+      habitId: habit.id,
+      selectedMonth: DateTime(today.year, today.month),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(habit.emoji, style: const TextStyle(fontSize: 22)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  habit.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  habit.description.isEmpty
+                      ? '$monthTotal diesen Monat'
+                      : habit.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _CompactToggle(
+            label: '${_weekdayAbbr[yesterday.weekday - 1]}.',
+            caption: 'Gestern',
+            date: yesterday,
+            habitId: habit.id,
+            controller: controller,
+          ),
+          const SizedBox(width: 6),
+          _CompactToggle(
+            label: '${_weekdayAbbr[today.weekday - 1]}.',
+            caption: 'Heute',
+            date: today,
+            habitId: habit.id,
+            controller: controller,
+            isToday: true,
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Habit verwalten',
+            iconSize: 20,
+            onSelected: (value) {
+              if (value == 'edit') onEdit();
+              if (value == 'archive') controller.archiveHabit(habit.id);
+            },
+            itemBuilder: (context) {
+              return const [
+                PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
+                PopupMenuItem(value: 'archive', child: Text('Archivieren')),
+              ];
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactToggle extends StatelessWidget {
+  const _CompactToggle({
+    required this.label,
+    required this.caption,
+    required this.date,
+    required this.habitId,
+    required this.controller,
+    this.isToday = false,
+  });
+
+  final String label;
+  final String caption;
+  final DateTime date;
+  final String habitId;
+  final LighthouseController controller;
+  final bool isToday;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final completed = controller.isHabitCompleted(habitId: habitId, date: date);
+
+    return SizedBox(
+      width: 54,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            caption,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: isToday
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 4),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: () => controller.toggleHabit(habitId: habitId, date: date),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: completed ? colorScheme.primary : Colors.transparent,
+                    border: Border.all(
+                      width: 1.5,
+                      color: completed
+                          ? colorScheme.primary
+                          : colorScheme.primary.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  child: completed
+                      ? Icon(
+                          Icons.check,
+                          size: 16,
+                          color: colorScheme.onPrimary,
+                        )
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

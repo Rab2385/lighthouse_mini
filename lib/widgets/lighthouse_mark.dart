@@ -6,11 +6,7 @@ import 'package:flutter/material.dart';
 /// background, tightly cropped, so a plain [BoxFit.contain] fills the box and
 /// [BlendMode.srcIn] recolours it to match the wordmark.
 class LighthouseMark extends StatelessWidget {
-  const LighthouseMark({
-    super.key,
-    required this.height,
-    this.color,
-  });
+  const LighthouseMark({super.key, required this.height, this.color});
 
   /// Rendered height in logical pixels. Width follows the mark's aspect ratio.
   final double height;
@@ -31,11 +27,7 @@ class LighthouseMark extends StatelessWidget {
         color: tint,
         colorBlendMode: BlendMode.srcIn,
         errorBuilder: (context, error, stackTrace) {
-          return Icon(
-            Icons.light_mode_outlined,
-            size: height,
-            color: tint,
-          );
+          return Icon(Icons.light_mode_outlined, size: height, color: tint);
         },
       ),
     );

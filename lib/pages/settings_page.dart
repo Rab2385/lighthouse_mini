@@ -3,20 +3,15 @@ import 'package:flutter/material.dart';
 import '../state/lighthouse_controller.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({
-    super.key,
-    required this.controller,
-  });
+  const SettingsPage({super.key, required this.controller});
 
   final LighthouseController controller;
 
   @override
-  State<SettingsPage> createState() =>
-      _SettingsPageState();
+  State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState
-    extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _nameController;
 
   bool _savingName = false;
@@ -25,9 +20,7 @@ class _SettingsPageState
   void initState() {
     super.initState();
 
-    _nameController = TextEditingController(
-      text: widget.controller.userName,
-    );
+    _nameController = TextEditingController(text: widget.controller.userName);
   }
 
   @override
@@ -41,9 +34,7 @@ class _SettingsPageState
       _savingName = true;
     });
 
-    await widget.controller.setUserName(
-      _nameController.text,
-    );
+    await widget.controller.setUserName(_nameController.text);
 
     if (!mounted) {
       return;
@@ -53,11 +44,9 @@ class _SettingsPageState
       _savingName = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Name gespeichert.'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Name gespeichert.')));
   }
 
   Future<void> _clearAllData() async {
@@ -65,9 +54,7 @@ class _SettingsPageState
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(
-            'Alle lokalen Daten löschen?',
-          ),
+          title: const Text('Alle lokalen Daten löschen?'),
           content: const Text(
             'Good Things, Habit-Markierungen, '
             'eigene Habits und Einstellungen '
@@ -78,23 +65,15 @@ class _SettingsPageState
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
+                Navigator.pop(dialogContext, false);
               },
               child: const Text('Abbrechen'),
             ),
             FilledButton(
               onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
+                Navigator.pop(dialogContext, true);
               },
-              child: const Text(
-                'Alles löschen',
-              ),
+              child: const Text('Alles löschen'),
             ),
           ],
         );
@@ -114,11 +93,7 @@ class _SettingsPageState
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Lokale Daten wurden gelöscht.',
-        ),
-      ),
+      const SnackBar(content: Text('Lokale Daten wurden gelöscht.')),
     );
   }
 
@@ -130,40 +105,24 @@ class _SettingsPageState
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              24,
-              24,
-              24,
-              40,
-            ),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
             child: Align(
               alignment: Alignment.topLeft,
               child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(
-                  maxWidth: 760,
-                ),
+                constraints: const BoxConstraints(maxWidth: 760),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Settings',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(
-                            fontWeight:
-                                FontWeight.w700,
-                          ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Aussehen, Name und lokale Daten.',
                       style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 22),
@@ -171,20 +130,14 @@ class _SettingsPageState
                       child: Column(
                         children: [
                           SwitchListTile(
-                            title:
-                                const Text('Dark Mode'),
+                            title: const Text('Dark Mode'),
                             subtitle: const Text(
                               'Ruhiges dunkles Petrol-Design.',
                             ),
-                            secondary:
-                                const Icon(
-                              Icons.dark_mode_outlined,
-                            ),
-                            value: widget
-                                .controller.darkMode,
+                            secondary: const Icon(Icons.dark_mode_outlined),
+                            value: widget.controller.darkMode,
                             onChanged: (value) {
-                              widget.controller
-                                  .setDarkMode(value);
+                              widget.controller.setDarkMode(value);
                             },
                           ),
                         ],
@@ -193,22 +146,14 @@ class _SettingsPageState
                     const SizedBox(height: 16),
                     Card(
                       child: Padding(
-                        padding:
-                            const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(20),
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Dein Name',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    fontWeight:
-                                        FontWeight
-                                            .w700,
-                                  ),
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 6),
                             const Text(
@@ -218,42 +163,29 @@ class _SettingsPageState
                             ),
                             const SizedBox(height: 16),
                             TextField(
-                              controller:
-                                  _nameController,
-                              textInputAction:
-                                  TextInputAction.done,
-                              onSubmitted:
-                                  (_) => _saveName(),
-                              decoration:
-                                  const InputDecoration(
+                              controller: _nameController,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _saveName(),
+                              decoration: const InputDecoration(
                                 labelText: 'Name',
-                                hintText:
-                                    'Zum Beispiel Robert',
+                                hintText: 'Zum Beispiel Robert',
                               ),
                             ),
                             const SizedBox(height: 12),
                             Align(
-                              alignment:
-                                  Alignment.centerRight,
-                              child:
-                                  FilledButton.icon(
-                                onPressed: _savingName
-                                    ? null
-                                    : _saveName,
+                              alignment: Alignment.centerRight,
+                              child: FilledButton.icon(
+                                onPressed: _savingName ? null : _saveName,
                                 icon: _savingName
                                     ? const SizedBox(
                                         width: 16,
                                         height: 16,
-                                        child:
-                                            CircularProgressIndicator(
+                                        child: CircularProgressIndicator(
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Icon(
-                                        Icons.save_outlined,
-                                      ),
-                                label:
-                                    const Text('Speichern'),
+                                    : const Icon(Icons.save_outlined),
+                                label: const Text('Speichern'),
                               ),
                             ),
                           ],
@@ -265,21 +197,17 @@ class _SettingsPageState
                       child: const Padding(
                         padding: EdgeInsets.all(20),
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Icon(
-                                  Icons.lock_outline,
-                                ),
+                                Icon(Icons.lock_outline),
                                 SizedBox(width: 10),
                                 Text(
                                   'Privacy',
                                   style: TextStyle(
                                     fontSize: 18,
-                                    fontWeight:
-                                        FontWeight.w700,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -299,22 +227,14 @@ class _SettingsPageState
                     const SizedBox(height: 16),
                     Card(
                       child: Padding(
-                        padding:
-                            const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(20),
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Gefahrenzone',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    fontWeight:
-                                        FontWeight
-                                            .w700,
-                                  ),
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 8),
                             const Text(
@@ -323,14 +243,9 @@ class _SettingsPageState
                             ),
                             const SizedBox(height: 16),
                             OutlinedButton.icon(
-                              onPressed:
-                                  _clearAllData,
-                              icon: const Icon(
-                                Icons.delete_forever,
-                              ),
-                              label: const Text(
-                                'Alle lokalen Daten löschen',
-                              ),
+                              onPressed: _clearAllData,
+                              icon: const Icon(Icons.delete_forever),
+                              label: const Text('Alle lokalen Daten löschen'),
                             ),
                           ],
                         ),

@@ -10,6 +10,7 @@ class MonthHeader extends StatelessWidget {
     this.onNextMonth,
     this.trailing,
     this.subtitle,
+    this.showMonthControls = true,
   });
 
   final String title;
@@ -19,6 +20,10 @@ class MonthHeader extends StatelessWidget {
   final VoidCallback onToday;
   final Widget? trailing;
   final String? subtitle;
+
+  /// When false, the ‹ month › stepper and "Heute" button are hidden and only
+  /// [trailing] is shown alongside the title.
+  final bool showMonthControls;
 
   static const List<String> _monthNames = [
     'Januar',
@@ -46,25 +51,27 @@ class MonthHeader extends StatelessWidget {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        IconButton.outlined(
-          tooltip: 'Vorheriger Monat',
-          onPressed: onPreviousMonth,
-          icon: const Icon(Icons.chevron_left),
-        ),
-        SizedBox(
-          width: 150,
-          child: Text(
-            monthText,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+        if (showMonthControls) ...[
+          IconButton.outlined(
+            tooltip: 'Vorheriger Monat',
+            onPressed: onPreviousMonth,
+            icon: const Icon(Icons.chevron_left),
           ),
-        ),
-        IconButton.outlined(
-          tooltip: 'Nächster Monat',
-          onPressed: onNextMonth,
-          icon: const Icon(Icons.chevron_right),
-        ),
-        OutlinedButton(onPressed: onToday, child: const Text('Heute')),
+          SizedBox(
+            width: 150,
+            child: Text(
+              monthText,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          IconButton.outlined(
+            tooltip: 'Nächster Monat',
+            onPressed: onNextMonth,
+            icon: const Icon(Icons.chevron_right),
+          ),
+          OutlinedButton(onPressed: onToday, child: const Text('Heute')),
+        ],
         ?trailing,
       ],
     );

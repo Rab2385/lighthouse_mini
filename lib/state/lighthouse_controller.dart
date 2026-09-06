@@ -18,10 +18,15 @@ class LighthouseController extends ChangeNotifier {
 
   bool _darkMode = false;
   String _userName = '';
+  bool _habitCompactView = true;
   int _idCounter = 0;
 
   bool get darkMode => _darkMode;
   String get userName => _userName;
+
+  /// Whether the habit tracker shows the compact "Gestern / Heute" list
+  /// (true) or the full month grid (false).
+  bool get habitCompactView => _habitCompactView;
 
   /// A greeting for the current time of day, personalised with [userName]
   /// when one has been set in the settings.
@@ -34,8 +39,7 @@ class LighthouseController extends ChangeNotifier {
   List<Habit> get habits {
     final result = List<Habit>.from(_habits)
       ..sort((first, second) {
-        final sortComparison =
-            first.sortOrder.compareTo(second.sortOrder);
+        final sortComparison = first.sortOrder.compareTo(second.sortOrder);
 
         if (sortComparison != 0) {
           return sortComparison;
@@ -60,14 +64,9 @@ class LighthouseController extends ChangeNotifier {
   DateTime get maximumFutureDate {
     final current = today;
     final nextMonth = current.month == 12 ? 1 : current.month + 1;
-    final nextYear =
-        current.month == 12 ? current.year + 1 : current.year;
+    final nextYear = current.month == 12 ? current.year + 1 : current.year;
 
-    final lastDayOfNextMonth = DateTime(
-      nextYear,
-      nextMonth + 1,
-      0,
-    ).day;
+    final lastDayOfNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
 
     return DateTime(
       nextYear,
@@ -97,6 +96,7 @@ class LighthouseController extends ChangeNotifier {
     final settings = await _database.loadSettings();
     _darkMode = settings['darkMode'] as bool? ?? false;
     _userName = (settings['userName'] as String? ?? '').trim();
+    _habitCompactView = settings['habitCompactView'] as bool? ?? true;
 
     if (_habits.isEmpty) {
       await _createDefaultHabits();
@@ -110,26 +110,20 @@ class LighthouseController extends ChangeNotifier {
   }
 
   List<GoodThing> goodThingsForDate(DateTime date) {
-    final result = _goodThings.where((entry) {
-      return _isSameDay(entry.date, date);
-    }).toList()
-      ..sort(
-        (first, second) =>
-            first.createdAt.compareTo(second.createdAt),
-      );
+    final result =
+        _goodThings.where((entry) {
+          return _isSameDay(entry.date, date);
+        }).toList()..sort(
+          (first, second) => first.createdAt.compareTo(second.createdAt),
+        );
 
     return result;
   }
 
   List<GoodThing> goodThingsForMonth(DateTime month) {
     final result = _goodThings.where((entry) {
-      return entry.date.year == month.year &&
-          entry.date.month == month.month;
-    }).toList()
-      ..sort(
-        (first, second) =>
-            first.date.compareTo(second.date),
-      );
+      return entry.date.year == month.year && entry.date.month == month.month;
+    }).toList()..sort((first, second) => first.date.compareTo(second.date));
 
     return result;
   }
@@ -140,13 +134,10 @@ class LighthouseController extends ChangeNotifier {
     final from = _dateOnly(start);
     final to = _dateOnly(end);
 
-    final result =
-        _goodThings.where((entry) {
-          final date = _dateOnly(entry.date);
-          return !date.isBefore(from) && !date.isAfter(to);
-        }).toList()..sort(
-          (first, second) => first.date.compareTo(second.date),
-        );
+    final result = _goodThings.where((entry) {
+      final date = _dateOnly(entry.date);
+      return !date.isBefore(from) && !date.isAfter(to);
+    }).toList()..sort((first, second) => first.date.compareTo(second.date));
 
     return result;
   }
@@ -191,19 +182,12 @@ class LighthouseController extends ChangeNotifier {
 
     final result = _goodThings.where((entry) {
       return entry.text.toLowerCase().contains(cleanQuery);
-    }).toList()
-      ..sort(
-        (first, second) =>
-            second.date.compareTo(first.date),
-      );
+    }).toList()..sort((first, second) => second.date.compareTo(first.date));
 
     return result;
   }
 
-  List<String> suggestionsFor(
-    String query, {
-    int limit = 4,
-  }) {
+  List<String> suggestionsFor(String query, {int limit = 4}) {
     if (_goodThings.isEmpty) {
       return const [];
     }
@@ -239,43 +223,37 @@ class LighthouseController extends ChangeNotifier {
       }
     }
 
-    final candidates = statistics.values.where((suggestion) {
-      if (normalizedQuery.isEmpty) {
-        return true;
-      }
-
-      return suggestion.text
-          .toLowerCase()
-          .contains(normalizedQuery);
-    }).toList()
-      ..sort((first, second) {
-        if (normalizedQuery.isNotEmpty) {
-          final firstStarts = first.text
-              .toLowerCase()
-              .startsWith(normalizedQuery);
-          final secondStarts = second.text
-              .toLowerCase()
-              .startsWith(normalizedQuery);
-
-          if (firstStarts != secondStarts) {
-            return firstStarts ? -1 : 1;
+    final candidates =
+        statistics.values.where((suggestion) {
+          if (normalizedQuery.isEmpty) {
+            return true;
           }
-        }
 
-        final countComparison =
-            second.count.compareTo(first.count);
+          return suggestion.text.toLowerCase().contains(normalizedQuery);
+        }).toList()..sort((first, second) {
+          if (normalizedQuery.isNotEmpty) {
+            final firstStarts = first.text.toLowerCase().startsWith(
+              normalizedQuery,
+            );
+            final secondStarts = second.text.toLowerCase().startsWith(
+              normalizedQuery,
+            );
 
-        if (countComparison != 0) {
-          return countComparison;
-        }
+            if (firstStarts != secondStarts) {
+              return firstStarts ? -1 : 1;
+            }
+          }
 
-        return second.lastUsed.compareTo(first.lastUsed);
-      });
+          final countComparison = second.count.compareTo(first.count);
 
-    return candidates
-        .take(limit)
-        .map((suggestion) => suggestion.text)
-        .toList();
+          if (countComparison != 0) {
+            return countComparison;
+          }
+
+          return second.lastUsed.compareTo(first.lastUsed);
+        });
+
+    return candidates.take(limit).map((suggestion) => suggestion.text).toList();
   }
 
   Future<void> addGoodThing({
@@ -284,8 +262,7 @@ class LighthouseController extends ChangeNotifier {
   }) async {
     final cleanText = text.trim();
 
-    if (cleanText.isEmpty ||
-        !canAddGoodThingForDate(date)) {
+    if (cleanText.isEmpty || !canAddGoodThingForDate(date)) {
       return;
     }
 
@@ -315,8 +292,7 @@ class LighthouseController extends ChangeNotifier {
       return;
     }
 
-    final index =
-        _goodThings.indexWhere((entry) => entry.id == id);
+    final index = _goodThings.indexWhere((entry) => entry.id == id);
 
     if (index == -1) {
       return;
@@ -340,13 +316,8 @@ class LighthouseController extends ChangeNotifier {
     await _database.deleteGoodThing(id);
   }
 
-  bool isHabitCompleted({
-    required String habitId,
-    required DateTime date,
-  }) {
-    return _completedHabitKeys.contains(
-      _habitCompletionKey(habitId, date),
-    );
+  bool isHabitCompleted({required String habitId, required DateTime date}) {
+    return _completedHabitKeys.contains(_habitCompletionKey(habitId, date));
   }
 
   Future<void> toggleHabit({
@@ -359,13 +330,9 @@ class LighthouseController extends ChangeNotifier {
       return;
     }
 
-    final key = _habitCompletionKey(
-      habitId,
-      cleanDate,
-    );
+    final key = _habitCompletionKey(habitId, cleanDate);
 
-    final willBeCompleted =
-        !_completedHabitKeys.contains(key);
+    final willBeCompleted = !_completedHabitKeys.contains(key);
 
     if (willBeCompleted) {
       _completedHabitKeys.add(key);
@@ -396,16 +363,9 @@ class LighthouseController extends ChangeNotifier {
     var total = 0;
 
     for (var day = 1; day <= daysInMonth; day++) {
-      final date = DateTime(
-        selectedMonth.year,
-        selectedMonth.month,
-        day,
-      );
+      final date = DateTime(selectedMonth.year, selectedMonth.month, day);
 
-      if (isHabitCompleted(
-        habitId: habitId,
-        date: date,
-      )) {
+      if (isHabitCompleted(habitId: habitId, date: date)) {
         total++;
       }
     }
@@ -452,8 +412,7 @@ class LighthouseController extends ChangeNotifier {
       return;
     }
 
-    final index =
-        _habits.indexWhere((habit) => habit.id == id);
+    final index = _habits.indexWhere((habit) => habit.id == id);
 
     if (index == -1) {
       return;
@@ -472,16 +431,13 @@ class LighthouseController extends ChangeNotifier {
   }
 
   Future<void> archiveHabit(String id) async {
-    final index =
-        _habits.indexWhere((habit) => habit.id == id);
+    final index = _habits.indexWhere((habit) => habit.id == id);
 
     if (index == -1) {
       return;
     }
 
-    final updated = _habits[index].copyWith(
-      isArchived: true,
-    );
+    final updated = _habits[index].copyWith(isArchived: true);
 
     _habits[index] = updated;
     notifyListeners();
@@ -490,16 +446,13 @@ class LighthouseController extends ChangeNotifier {
   }
 
   Future<void> restoreHabit(String id) async {
-    final index =
-        _habits.indexWhere((habit) => habit.id == id);
+    final index = _habits.indexWhere((habit) => habit.id == id);
 
     if (index == -1) {
       return;
     }
 
-    final updated = _habits[index].copyWith(
-      isArchived: false,
-    );
+    final updated = _habits[index].copyWith(isArchived: false);
 
     _habits[index] = updated;
     notifyListeners();
@@ -509,9 +462,7 @@ class LighthouseController extends ChangeNotifier {
 
   Future<void> permanentlyDeleteHabit(String id) async {
     _habits.removeWhere((habit) => habit.id == id);
-    _completedHabitKeys.removeWhere(
-      (key) => key.startsWith('$id|'),
-    );
+    _completedHabitKeys.removeWhere((key) => key.startsWith('$id|'));
 
     notifyListeners();
 
@@ -527,6 +478,17 @@ class LighthouseController extends ChangeNotifier {
     notifyListeners();
 
     await _database.saveSetting('darkMode', value);
+  }
+
+  Future<void> setHabitCompactView(bool value) async {
+    if (_habitCompactView == value) {
+      return;
+    }
+
+    _habitCompactView = value;
+    notifyListeners();
+
+    await _database.saveSetting('habitCompactView', value);
   }
 
   Future<void> setUserName(String value) async {
@@ -550,6 +512,7 @@ class LighthouseController extends ChangeNotifier {
     _completedHabitKeys.clear();
     _darkMode = false;
     _userName = '';
+    _habitCompactView = true;
 
     await _createDefaultHabits();
     notifyListeners();
@@ -628,10 +591,7 @@ class LighthouseController extends ChangeNotifier {
     return '${DateTime.now().microsecondsSinceEpoch}_$_idCounter';
   }
 
-  String _habitCompletionKey(
-    String habitId,
-    DateTime date,
-  ) {
+  String _habitCompletionKey(String habitId, DateTime date) {
     return '$habitId|${_dateKey(date)}';
   }
 
@@ -644,17 +604,10 @@ class LighthouseController extends ChangeNotifier {
   }
 
   DateTime _dateOnly(DateTime date) {
-    return DateTime(
-      date.year,
-      date.month,
-      date.day,
-    );
+    return DateTime(date.year, date.month, date.day);
   }
 
-  bool _isSameDay(
-    DateTime first,
-    DateTime second,
-  ) {
+  bool _isSameDay(DateTime first, DateTime second) {
     return first.year == second.year &&
         first.month == second.month &&
         first.day == second.day;

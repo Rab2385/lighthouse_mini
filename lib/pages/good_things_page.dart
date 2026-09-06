@@ -104,9 +104,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
   }
 
   void _scrollToToday() {
-    if (!mounted ||
-        !_isViewingCurrentMonth ||
-        _searchQuery.trim().isNotEmpty) {
+    if (!mounted || !_isViewingCurrentMonth || _searchQuery.trim().isNotEmpty) {
       return;
     }
 
@@ -193,10 +191,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
         action: SnackBarAction(
           label: 'Rückgängig',
           onPressed: () {
-            widget.controller.addGoodThing(
-              date: entry.date,
-              text: entry.text,
-            );
+            widget.controller.addGoodThing(date: entry.date, text: entry.text);
           },
         ),
       ),
@@ -664,8 +659,7 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
         .map((entry) => entry.text.trim().toLowerCase())
         .toSet();
 
-    final suggestions =
-        (_hasFocus || _query.trim().isNotEmpty)
+    final suggestions = (_hasFocus || _query.trim().isNotEmpty)
         ? widget.controller
               .suggestionsFor(_query)
               .where(

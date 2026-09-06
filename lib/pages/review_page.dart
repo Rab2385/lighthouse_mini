@@ -6,10 +6,7 @@ import '../state/lighthouse_controller.dart';
 enum _RangePreset { thisMonth, last7Days, last30Days, thisYear, custom }
 
 class ReviewPage extends StatefulWidget {
-  const ReviewPage({
-    super.key,
-    required this.controller,
-  });
+  const ReviewPage({super.key, required this.controller});
 
   final LighthouseController controller;
 
@@ -307,9 +304,8 @@ class _ReviewPageState extends State<ReviewPage> {
       }
     }
 
-    final result =
-        counts.values.where((entry) => entry.count > 1).toList()
-          ..sort((first, second) => second.count.compareTo(first.count));
+    final result = counts.values.where((entry) => entry.count > 1).toList()
+      ..sort((first, second) => second.count.compareTo(first.count));
 
     return result.take(5).toList();
   }
@@ -386,8 +382,7 @@ class _ReviewHeader extends StatelessWidget {
                 style: preset == _RangePreset.custom
                     ? OutlinedButton.styleFrom(
                         backgroundColor: theme.colorScheme.secondaryContainer,
-                        foregroundColor:
-                            theme.colorScheme.onSecondaryContainer,
+                        foregroundColor: theme.colorScheme.onSecondaryContainer,
                       )
                     : null,
               ),
@@ -470,10 +465,7 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.child,
-  });
+  const _SectionCard({required this.title, required this.child});
 
   final String title;
   final Widget child;
@@ -488,9 +480,9 @@ class _SectionCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
             child,
@@ -556,10 +548,7 @@ class _HabitReviewRow extends StatelessWidget {
 }
 
 class _RecurringEntry {
-  const _RecurringEntry({
-    required this.text,
-    required this.count,
-  });
+  const _RecurringEntry({required this.text, required this.count});
 
   final String text;
   final int count;
