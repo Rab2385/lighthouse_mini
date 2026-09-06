@@ -26,4 +26,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/lighthouse_logo.png
+    - assets/images/lighthouse_mark.png

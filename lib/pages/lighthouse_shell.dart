@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../state/lighthouse_controller.dart';
+import '../widgets/lighthouse_mark.dart';
 import 'good_things_page.dart';
 import 'habits_page.dart';
 import 'review_page.dart';
@@ -111,22 +112,8 @@ class _LighthouseShellState extends State<LighthouseShell> {
             title: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: Image.asset(
-                    'assets/images/lighthouse_logo.png',
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        Icons.light_mode_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
+                const LighthouseMark(height: 28),
+                const SizedBox(width: 10),
                 Text(
                   'Lighthouse',
                   style: TextStyle(
@@ -181,28 +168,8 @@ class _LighthouseLogo extends StatelessWidget {
       width: 188,
       child: Row(
         children: [
-          SizedBox(
-            width: 64,
-            height: 64,
-            child: ClipRect(
-              child: Transform.scale(
-                scale: 2.5,
-                child: Image.asset(
-                  'assets/images/lighthouse_logo.png',
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.light_mode_outlined,
-                      size: 36,
-                      color: colorScheme.primary,
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
+          const LighthouseMark(height: 38),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
