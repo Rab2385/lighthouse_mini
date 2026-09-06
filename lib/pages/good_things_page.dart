@@ -13,10 +13,13 @@ class GoodThingsPage extends StatefulWidget {
   State<GoodThingsPage> createState() => _GoodThingsPageState();
 }
 
-class _GoodThingsPageState extends State<GoodThingsPage> {
+class _GoodThingsPageState extends State<GoodThingsPage>
+    with WidgetsBindingObserver {
   late DateTime _selectedMonth;
 
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _monthScrollController = ScrollController();
+  final GlobalKey _todayCardKey = GlobalKey();
 
   String _searchQuery = '';
 
@@ -33,15 +36,34 @@ class _GoodThingsPageState extends State<GoodThingsPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     final today = widget.controller.today;
     _selectedMonth = DateTime(today.year, today.month);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
+    _monthScrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When the app comes back to the foreground, land on today again.
+    if (state == AppLifecycleState.resumed) {
+      _goToToday();
+    }
+  }
+
+  bool get _isViewingCurrentMonth {
+    final today = widget.controller.today;
+    return _selectedMonth.year == today.year &&
+        _selectedMonth.month == today.month;
   }
 
   void _showPreviousMonth() {
@@ -62,12 +84,43 @@ class _GoodThingsPageState extends State<GoodThingsPage> {
     });
   }
 
-  void _showCurrentMonth() {
+  /// Jump back to the current month and scroll today's card into view.
+  void _goToToday() {
+    if (!mounted) {
+      return;
+    }
+
     final today = widget.controller.today;
 
     setState(() {
       _selectedMonth = DateTime(today.year, today.month);
+      if (_searchQuery.trim().isNotEmpty) {
+        _searchQuery = '';
+        _searchController.clear();
+      }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+  }
+
+  void _scrollToToday() {
+    if (!mounted ||
+        !_isViewingCurrentMonth ||
+        _searchQuery.trim().isNotEmpty) {
+      return;
+    }
+
+    final cardContext = _todayCardKey.currentContext;
+    if (cardContext == null) {
+      return;
+    }
+
+    Scrollable.ensureVisible(
+      cardContext,
+      alignment: 0.06,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   bool get _canShowNextMonth {
@@ -171,7 +224,7 @@ class _GoodThingsPageState extends State<GoodThingsPage> {
               selectedMonth: _selectedMonth,
               onPreviousMonth: _showPreviousMonth,
               onNextMonth: _canShowNextMonth ? _showNextMonth : null,
-              onToday: _showCurrentMonth,
+              onToday: _goToToday,
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
@@ -210,40 +263,41 @@ class _GoodThingsPageState extends State<GoodThingsPage> {
                       onEdit: _editEntry,
                       onDelete: _deleteEntry,
                     )
-                  : ListView.builder(
+                  : SingleChildScrollView(
+                      controller: _monthScrollController,
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                      itemCount: daysInMonth,
-                      itemBuilder: (context, index) {
-                        final date = DateTime(
-                          _selectedMonth.year,
-                          _selectedMonth.month,
-                          index + 1,
-                        );
-
-                        return _GoodThingsDayCard(
-                          key: ValueKey(
-                            '${date.year}-'
-                            '${date.month}-'
-                            '${date.day}',
-                          ),
-                          date: date,
-                          weekdayName: _weekdayNames[date.weekday - 1],
-                          entries: widget.controller.goodThingsForDate(date),
-                          canAdd: widget.controller.canAddGoodThingForDate(
-                            date,
-                          ),
-                          maximumFutureDate:
-                              widget.controller.maximumFutureDate,
-                          controller: widget.controller,
-                          onEdit: _editEntry,
-                          onDelete: _deleteEntry,
-                        );
-                      },
+                      child: Column(
+                        children: [
+                          for (var day = 1; day <= daysInMonth; day++)
+                            _buildDayCard(day),
+                        ],
+                      ),
                     ),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildDayCard(int day) {
+    final date = DateTime(_selectedMonth.year, _selectedMonth.month, day);
+
+    final isToday =
+        _isViewingCurrentMonth && day == widget.controller.today.day;
+
+    return _GoodThingsDayCard(
+      key: isToday
+          ? _todayCardKey
+          : ValueKey('${date.year}-${date.month}-${date.day}'),
+      date: date,
+      weekdayName: _weekdayNames[date.weekday - 1],
+      entries: widget.controller.goodThingsForDate(date),
+      canAdd: widget.controller.canAddGoodThingForDate(date),
+      maximumFutureDate: widget.controller.maximumFutureDate,
+      controller: widget.controller,
+      onEdit: _editEntry,
+      onDelete: _deleteEntry,
     );
   }
 }

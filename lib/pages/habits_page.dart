@@ -28,15 +28,45 @@ class HabitsPage extends StatefulWidget {
   State<HabitsPage> createState() => _HabitsPageState();
 }
 
-class _HabitsPageState extends State<HabitsPage> {
+class _HabitsPageState extends State<HabitsPage>
+    with WidgetsBindingObserver {
   late DateTime _selectedMonth;
+
+  final ScrollController _gridScrollController = ScrollController();
+
+  static const double _nameColumnWidth = 220;
+  static const double _dayCellWidth = 44;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     final today = widget.controller.today;
     _selectedMonth = DateTime(today.year, today.month);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollGridToToday());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _gridScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // When the app comes back to the foreground, land on today again.
+    if (state == AppLifecycleState.resumed) {
+      _goToToday();
+    }
+  }
+
+  bool get _isViewingCurrentMonth {
+    final today = widget.controller.today;
+    return _selectedMonth.year == today.year &&
+        _selectedMonth.month == today.month;
   }
 
   void _showPreviousMonth() {
@@ -57,12 +87,42 @@ class _HabitsPageState extends State<HabitsPage> {
     });
   }
 
-  void _showCurrentMonth() {
+  /// Jump back to the current month and scroll today's column into view.
+  void _goToToday() {
+    if (!mounted) {
+      return;
+    }
+
     final today = widget.controller.today;
 
     setState(() {
       _selectedMonth = DateTime(today.year, today.month);
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollGridToToday());
+  }
+
+  void _scrollGridToToday() {
+    if (!mounted ||
+        !_isViewingCurrentMonth ||
+        !_gridScrollController.hasClients) {
+      return;
+    }
+
+    final position = _gridScrollController.position;
+    final todayDay = widget.controller.today.day;
+
+    final columnCentre =
+        _nameColumnWidth + (todayDay - 1) * _dayCellWidth + _dayCellWidth / 2;
+
+    final target = (columnCentre - position.viewportDimension / 2)
+        .clamp(0.0, position.maxScrollExtent);
+
+    _gridScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   bool get _canShowNextMonth {
@@ -346,7 +406,7 @@ class _HabitsPageState extends State<HabitsPage> {
               selectedMonth: _selectedMonth,
               onPreviousMonth: _showPreviousMonth,
               onNextMonth: _canShowNextMonth ? _showNextMonth : null,
-              onToday: _showCurrentMonth,
+              onToday: _goToToday,
               trailing: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -381,6 +441,7 @@ class _HabitsPageState extends State<HabitsPage> {
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: SingleChildScrollView(
+                          controller: _gridScrollController,
                           scrollDirection: Axis.horizontal,
                           child: SizedBox(
                             width: tableWidth.toDouble(),
