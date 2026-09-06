@@ -4,6 +4,21 @@ import '../models/habit.dart';
 import '../state/lighthouse_controller.dart';
 import '../widgets/month_header.dart';
 
+const List<String> _defaultHabitEmojis = [
+  '💼',
+  '☕',
+  '💧',
+  '💻',
+  '🏃',
+  '🍷',
+  '📖',
+  '🧘',
+  '🍎',
+  '😴',
+  '📝',
+  '🎧',
+];
+
 class HabitsPage extends StatefulWidget {
   const HabitsPage({super.key, required this.controller});
 
@@ -77,6 +92,47 @@ class _HabitsPageState extends State<HabitsPage> {
                   decoration: const InputDecoration(
                     labelText: 'Emoji',
                     hintText: '📖',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _defaultHabitEmojis.map((emoji) {
+                      final isSelected = emojiController.text == emoji;
+
+                      return GestureDetector(
+                        onTap: () {
+                          emojiController.text = emoji;
+                          setState(() {});
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withValues(alpha: 0.16)
+                                : const Color(0xFFF4F6F8),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : const Color(0xFFD8DEE4),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
                 const SizedBox(height: 12),

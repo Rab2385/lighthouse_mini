@@ -128,7 +128,7 @@ class _LighthouseShellState extends State<LighthouseShell> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Lighthouse Mini',
+                  'Lighthouse',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: Theme.of(context).colorScheme.primary,
