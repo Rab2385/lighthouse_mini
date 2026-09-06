@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../data/lighthouse_database.dart';
 import '../models/good_thing.dart';
 import '../models/habit.dart';
+import '../util/greeting.dart';
 
 class LighthouseController extends ChangeNotifier {
   LighthouseController(this._database);
@@ -21,6 +22,10 @@ class LighthouseController extends ChangeNotifier {
 
   bool get darkMode => _darkMode;
   String get userName => _userName;
+
+  /// A greeting for the current time of day, personalised with [userName]
+  /// when one has been set in the settings.
+  String get greeting => greetingForTime(DateTime.now(), _userName);
 
   List<GoodThing> get goodThings {
     return List<GoodThing>.unmodifiable(_goodThings);

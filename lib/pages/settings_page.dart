@@ -212,8 +212,9 @@ class _SettingsPageState
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Wird später für eine '
-                              'persönliche Begrüßung genutzt.',
+                              'Wird für die persönliche '
+                              'Begrüßung auf der Good-Things-Seite '
+                              'genutzt.',
                             ),
                             const SizedBox(height: 16),
                             TextField(

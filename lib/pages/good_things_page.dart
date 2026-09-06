@@ -220,7 +220,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
           children: [
             MonthHeader(
               title: 'Good Things',
-              subtitle: 'Schnell eintragen. Mit Enter speichern.',
+              subtitle: widget.controller.greeting,
               selectedMonth: _selectedMonth,
               onPreviousMonth: _showPreviousMonth,
               onNextMonth: _canShowNextMonth ? _showNextMonth : null,
