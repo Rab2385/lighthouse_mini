@@ -2,7 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
+import 'package:flutter/widgets.dart' show Locale;
+
 import '../data/lighthouse_database.dart';
+import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../models/habit.dart';
 import '../util/greeting.dart';
@@ -19,10 +22,18 @@ class LighthouseController extends ChangeNotifier {
   bool _darkMode = false;
   String _userName = '';
   bool _habitCompactView = true;
+  String _languageCode = 'de';
   int _idCounter = 0;
 
   bool get darkMode => _darkMode;
   String get userName => _userName;
+  String get languageCode => _languageCode;
+
+  /// The active translation table.
+  AppStrings get strings => AppStrings(_languageCode);
+
+  /// Locale for `MaterialApp`, so the Material date pickers etc. match.
+  Locale get appLocale => Locale(_languageCode);
 
   /// Whether the habit tracker shows the compact "Gestern / Heute" list
   /// (true) or the full month grid (false).
@@ -30,7 +41,7 @@ class LighthouseController extends ChangeNotifier {
 
   /// A greeting for the current time of day, personalised with [userName]
   /// when one has been set in the settings.
-  String get greeting => greetingForTime(DateTime.now(), _userName);
+  String get greeting => greetingForTime(DateTime.now(), _userName, strings);
 
   List<GoodThing> get goodThings {
     return List<GoodThing>.unmodifiable(_goodThings);
@@ -97,6 +108,11 @@ class LighthouseController extends ChangeNotifier {
     _darkMode = settings['darkMode'] as bool? ?? false;
     _userName = (settings['userName'] as String? ?? '').trim();
     _habitCompactView = settings['habitCompactView'] as bool? ?? true;
+
+    final storedLanguage = settings['language'] as String?;
+    _languageCode = AppStrings.supportedCodes.contains(storedLanguage)
+        ? storedLanguage!
+        : 'de';
 
     if (_habits.isEmpty) {
       await _createDefaultHabits();
@@ -491,6 +507,17 @@ class LighthouseController extends ChangeNotifier {
     await _database.saveSetting('habitCompactView', value);
   }
 
+  Future<void> setLanguage(String code) async {
+    if (_languageCode == code || !AppStrings.supportedCodes.contains(code)) {
+      return;
+    }
+
+    _languageCode = code;
+    notifyListeners();
+
+    await _database.saveSetting('language', code);
+  }
+
   Future<void> setUserName(String value) async {
     final cleanValue = value.trim();
 
@@ -513,6 +540,7 @@ class LighthouseController extends ChangeNotifier {
     _darkMode = false;
     _userName = '';
     _habitCompactView = true;
+    _languageCode = 'de';
 
     await _createDefaultHabits();
     notifyListeners();

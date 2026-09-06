@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../state/lighthouse_controller.dart';
 import '../widgets/month_header.dart';
@@ -23,15 +24,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
   String _searchQuery = '';
 
-  static const List<String> _weekdayNames = [
-    'Montag',
-    'Dienstag',
-    'Mittwoch',
-    'Donnerstag',
-    'Freitag',
-    'Samstag',
-    'Sonntag',
-  ];
+  AppStrings get _strings => widget.controller.strings;
 
   @override
   void initState() {
@@ -134,7 +127,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Eintrag bearbeiten'),
+          title: Text(_strings.editEntry),
           content: SizedBox(
             width: 460,
             child: TextField(
@@ -142,7 +135,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
               autofocus: true,
               minLines: 2,
               maxLines: 6,
-              decoration: const InputDecoration(labelText: 'Good Thing'),
+              decoration: InputDecoration(labelText: _strings.goodThingLabel),
             ),
           ),
           actions: [
@@ -150,7 +143,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
               onPressed: () {
                 Navigator.pop(dialogContext);
               },
-              child: const Text('Abbrechen'),
+              child: Text(_strings.cancel),
             ),
             FilledButton(
               onPressed: () {
@@ -160,7 +153,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
                   Navigator.pop(dialogContext, text);
                 }
               },
-              child: const Text('Speichern'),
+              child: Text(_strings.save),
             ),
           ],
         );
@@ -187,9 +180,9 @@ class _GoodThingsPageState extends State<GoodThingsPage>
     messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
-        content: const Text('Eintrag gelöscht.'),
+        content: Text(_strings.entryDeleted),
         action: SnackBarAction(
-          label: 'Rückgängig',
+          label: _strings.undo,
           onPressed: () {
             widget.controller.addGoodThing(date: entry.date, text: entry.text);
           },
@@ -214,7 +207,8 @@ class _GoodThingsPageState extends State<GoodThingsPage>
         return Column(
           children: [
             MonthHeader(
-              title: 'Good Things',
+              title: _strings.goodThings,
+              strings: _strings,
               subtitle: widget.controller.greeting,
               selectedMonth: _selectedMonth,
               onPreviousMonth: _showPreviousMonth,
@@ -231,12 +225,12 @@ class _GoodThingsPageState extends State<GoodThingsPage>
                   });
                 },
                 decoration: InputDecoration(
-                  hintText: 'Good Things durchsuchen …',
+                  hintText: _strings.searchGoodThings,
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchQuery.trim().isEmpty
                       ? null
                       : IconButton(
-                          tooltip: 'Suche löschen',
+                          tooltip: _strings.clearSearch,
                           onPressed: () {
                             _searchController.clear();
 
@@ -286,7 +280,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
           ? _todayCardKey
           : ValueKey('${date.year}-${date.month}-${date.day}'),
       date: date,
-      weekdayName: _weekdayNames[date.weekday - 1],
+      weekdayName: _strings.weekdaysLong[date.weekday - 1],
       entries: widget.controller.goodThingsForDate(date),
       canAdd: widget.controller.canAddGoodThingForDate(date),
       maximumFutureDate: widget.controller.maximumFutureDate,
@@ -314,12 +308,14 @@ class _SearchResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = controller.strings;
+
     if (results.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Text(
-            'Keine Einträge für „$query“ gefunden.',
+            strings.noEntriesFound(query),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -351,10 +347,8 @@ class _SearchResults extends StatelessWidget {
             ),
             title: Text(entry.text),
             subtitle: Text(
-              '${_twoDigits(entry.date.day)}.'
-              '${_twoDigits(entry.date.month)}.'
-              '${entry.date.year} · '
-              '${isAhead ? 'Ahead' : 'Good'}',
+              '${strings.formatDate(entry.date)} · '
+              '${isAhead ? strings.statusAhead : strings.statusGood}',
             ),
             onTap: () => onEdit(entry),
             trailing: PopupMenuButton<String>(
@@ -368,9 +362,9 @@ class _SearchResults extends StatelessWidget {
                 }
               },
               itemBuilder: (context) {
-                return const [
-                  PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
-                  PopupMenuItem(value: 'delete', child: Text('Löschen')),
+                return [
+                  PopupMenuItem(value: 'edit', child: Text(strings.edit)),
+                  PopupMenuItem(value: 'delete', child: Text(strings.delete)),
                 ];
               },
             ),
@@ -378,10 +372,6 @@ class _SearchResults extends StatelessWidget {
         );
       },
     );
-  }
-
-  static String _twoDigits(int value) {
-    return value.toString().padLeft(2, '0');
   }
 }
 
@@ -422,6 +412,7 @@ class _GoodThingsDayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final strings = controller.strings;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -467,10 +458,10 @@ class _GoodThingsDayCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           _isToday
-                              ? 'Heute'
+                              ? strings.statusToday
                               : _isFuture
-                              ? 'Ahead'
-                              : 'Good',
+                              ? strings.statusAhead
+                              : strings.statusGood,
                           style: TextStyle(
                             fontSize: 12,
                             color: colorScheme.primary,
@@ -493,12 +484,16 @@ class _GoodThingsDayCard extends StatelessWidget {
                     entry: entry,
                     onEdit: () => onEdit(entry),
                     onDelete: () => onDelete(entry),
+                    strings: strings,
                   ),
                 ),
               if (canAdd)
                 _QuickEntryField(date: date, controller: controller)
               else
-                _FutureLimitMessage(maximumFutureDate: maximumFutureDate),
+                _FutureLimitMessage(
+                  maximumFutureDate: maximumFutureDate,
+                  strings: strings,
+                ),
             ],
           );
 
@@ -528,11 +523,13 @@ class _SavedGoodThingLine extends StatelessWidget {
     required this.entry,
     required this.onEdit,
     required this.onDelete,
+    required this.strings,
   });
 
   final GoodThing entry;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
@@ -554,12 +551,12 @@ class _SavedGoodThingLine extends StatelessWidget {
             children: [
               Expanded(child: Text(entry.text)),
               IconButton(
-                tooltip: 'Bearbeiten',
+                tooltip: strings.edit,
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 19),
               ),
               IconButton(
-                tooltip: 'Löschen',
+                tooltip: strings.delete,
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline, size: 19),
               ),
@@ -684,7 +681,7 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
           },
           onSubmitted: (_) => _submit(),
           decoration: InputDecoration(
-            hintText: 'Write something good …',
+            hintText: widget.controller.strings.writeSomethingGood,
             prefixIcon: const Icon(Icons.add),
             suffixIcon: _isSaving
                 ? const Padding(
@@ -696,7 +693,7 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
                     ),
                   )
                 : IconButton(
-                    tooltip: 'Mit Enter speichern',
+                    tooltip: widget.controller.strings.saveWithEnter,
                     onPressed: _submit,
                     icon: const Icon(Icons.arrow_forward),
                   ),
@@ -723,15 +720,16 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
 }
 
 class _FutureLimitMessage extends StatelessWidget {
-  const _FutureLimitMessage({required this.maximumFutureDate});
+  const _FutureLimitMessage({
+    required this.maximumFutureDate,
+    required this.strings,
+  });
 
   final DateTime maximumFutureDate;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
-    final day = maximumFutureDate.day.toString().padLeft(2, '0');
-    final month = maximumFutureDate.month.toString().padLeft(2, '0');
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -740,8 +738,7 @@ class _FutureLimitMessage extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
-        'Ahead-Einträge sind bis '
-        '$day.$month.${maximumFutureDate.year} möglich.',
+        strings.aheadEntriesUntil(strings.formatDate(maximumFutureDate)),
         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     );

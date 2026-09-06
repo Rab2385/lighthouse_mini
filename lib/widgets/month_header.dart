@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
+
 class MonthHeader extends StatelessWidget {
   const MonthHeader({
     super.key,
     required this.title,
+    required this.strings,
     required this.selectedMonth,
     required this.onPreviousMonth,
     required this.onToday,
@@ -14,6 +17,7 @@ class MonthHeader extends StatelessWidget {
   });
 
   final String title;
+  final AppStrings strings;
   final DateTime selectedMonth;
   final VoidCallback onPreviousMonth;
   final VoidCallback? onNextMonth;
@@ -25,26 +29,9 @@ class MonthHeader extends StatelessWidget {
   /// [trailing] is shown alongside the title.
   final bool showMonthControls;
 
-  static const List<String> _monthNames = [
-    'Januar',
-    'Februar',
-    'März',
-    'April',
-    'Mai',
-    'Juni',
-    'Juli',
-    'August',
-    'September',
-    'Oktober',
-    'November',
-    'Dezember',
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final monthText =
-        '${_monthNames[selectedMonth.month - 1]} '
-        '${selectedMonth.year}';
+    final monthText = strings.monthAndYear(selectedMonth);
 
     final controls = Wrap(
       spacing: 8,
@@ -53,7 +40,7 @@ class MonthHeader extends StatelessWidget {
       children: [
         if (showMonthControls) ...[
           IconButton.outlined(
-            tooltip: 'Vorheriger Monat',
+            tooltip: strings.previousMonth,
             onPressed: onPreviousMonth,
             icon: const Icon(Icons.chevron_left),
           ),
@@ -66,11 +53,11 @@ class MonthHeader extends StatelessWidget {
             ),
           ),
           IconButton.outlined(
-            tooltip: 'Nächster Monat',
+            tooltip: strings.nextMonth,
             onPressed: onNextMonth,
             icon: const Icon(Icons.chevron_right),
           ),
-          OutlinedButton(onPressed: onToday, child: const Text('Heute')),
+          OutlinedButton(onPressed: onToday, child: Text(strings.today)),
         ],
         ?trailing,
       ],

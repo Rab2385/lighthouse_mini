@@ -22,7 +22,7 @@ class LighthouseApp extends StatelessWidget {
           theme: _buildLightTheme(),
           darkTheme: _buildDarkTheme(),
           themeMode: controller.darkMode ? ThemeMode.dark : ThemeMode.light,
-          locale: const Locale('de'),
+          locale: controller.appLocale,
           supportedLocales: const [Locale('de'), Locale('en')],
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,

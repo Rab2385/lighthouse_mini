@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import '../models/habit.dart';
 import '../state/lighthouse_controller.dart';
 import '../widgets/month_header.dart';
@@ -22,8 +23,6 @@ const List<String> _defaultHabitEmojis = [
 const double _kHeaderHeight = 58;
 const double _kRowHeight = 62;
 
-const List<String> _weekdayAbbr = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-
 class HabitsPage extends StatefulWidget {
   const HabitsPage({super.key, required this.controller});
 
@@ -39,6 +38,8 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
   final ScrollController _gridScrollController = ScrollController();
 
   double _gridCellWidth = 44;
+
+  AppStrings get _strings => widget.controller.strings;
 
   @override
   void initState() {
@@ -146,11 +147,13 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
       text: habit?.description ?? '',
     );
 
+    final strings = _strings;
+
     final shouldSave = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(habit == null ? 'Habit hinzufügen' : 'Habit bearbeiten'),
+          title: Text(habit == null ? strings.addHabit : strings.editHabit),
           content: SizedBox(
             width: 430,
             child: StatefulBuilder(
@@ -163,17 +166,17 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                     TextField(
                       controller: nameController,
                       autofocus: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Name',
-                        hintText: 'Zum Beispiel Reading',
+                      decoration: InputDecoration(
+                        labelText: strings.name,
+                        hintText: strings.habitNameHint,
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: emojiController,
                       onChanged: (_) => setDialogState(() {}),
-                      decoration: const InputDecoration(
-                        labelText: 'Emoji',
+                      decoration: InputDecoration(
+                        labelText: strings.emoji,
                         hintText: '📖',
                       ),
                     ),
@@ -223,9 +226,9 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                       controller: descriptionController,
                       minLines: 2,
                       maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'Beschreibung',
-                        hintText: 'Was bedeutet die Markierung?',
+                      decoration: InputDecoration(
+                        labelText: strings.description,
+                        hintText: strings.habitDescriptionHint,
                       ),
                     ),
                   ],
@@ -238,7 +241,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
               onPressed: () {
                 Navigator.pop(dialogContext, false);
               },
-              child: const Text('Abbrechen'),
+              child: Text(strings.cancel),
             ),
             FilledButton(
               onPressed: () {
@@ -248,7 +251,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
 
                 Navigator.pop(dialogContext, true);
               },
-              child: const Text('Speichern'),
+              child: Text(strings.save),
             ),
           ],
         );
@@ -278,11 +281,13 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
   }
 
   Future<void> _showArchivedHabits() async {
+    final strings = _strings;
+
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Archivierte Habits'),
+          title: Text(strings.archivedHabits),
           content: SizedBox(
             width: 520,
             height: 350,
@@ -292,9 +297,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                 final archived = widget.controller.archivedHabits;
 
                 if (archived.isEmpty) {
-                  return const Center(
-                    child: Text('Keine archivierten Habits.'),
-                  );
+                  return Center(child: Text(strings.noArchivedHabits));
                 }
 
                 return ListView.separated(
@@ -317,37 +320,35 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                         spacing: 4,
                         children: [
                           IconButton(
-                            tooltip: 'Wiederherstellen',
+                            tooltip: strings.restore,
                             onPressed: () {
                               widget.controller.restoreHabit(habit.id);
                             },
                             icon: const Icon(Icons.restore),
                           ),
                           IconButton(
-                            tooltip: 'Endgültig löschen',
+                            tooltip: strings.deleteForever,
                             onPressed: () async {
                               final confirmed = await showDialog<bool>(
                                 context: context,
                                 builder: (confirmContext) {
                                   return AlertDialog(
-                                    title: const Text('Endgültig löschen?'),
+                                    title: Text(strings.deleteForeverQ),
                                     content: Text(
-                                      'Alle Markierungen '
-                                      'von "${habit.name}" '
-                                      'werden gelöscht.',
+                                      strings.deleteHabitMarkings(habit.name),
                                     ),
                                     actions: [
                                       TextButton(
                                         onPressed: () {
                                           Navigator.pop(confirmContext, false);
                                         },
-                                        child: const Text('Abbrechen'),
+                                        child: Text(strings.cancel),
                                       ),
                                       FilledButton(
                                         onPressed: () {
                                           Navigator.pop(confirmContext, true);
                                         },
-                                        child: const Text('Löschen'),
+                                        child: Text(strings.delete),
                                       ),
                                     ],
                                   );
@@ -375,7 +376,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
               onPressed: () {
                 Navigator.pop(dialogContext);
               },
-              child: const Text('Schließen'),
+              child: Text(strings.close),
             ),
           ],
         );
@@ -405,14 +406,16 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
       builder: (context, child) {
         final habits = widget.controller.activeHabits;
         final compact = widget.controller.habitCompactView;
+        final strings = _strings;
 
         return Column(
           children: [
             MonthHeader(
-              title: 'Habit Tracker',
+              title: strings.habitTracker,
+              strings: strings,
               subtitle: compact
-                  ? 'Gestern und heute – ein Tippen genügt.'
-                  : 'Der ganze Monat zum Nachtragen.',
+                  ? strings.habitsCompactHint
+                  : strings.habitsMonthHint,
               selectedMonth: _selectedMonth,
               showMonthControls: !compact,
               onPreviousMonth: _showPreviousMonth,
@@ -424,6 +427,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   _HabitViewToggle(
+                    strings: strings,
                     compact: compact,
                     onChanged: (value) {
                       widget.controller.setHabitCompactView(value);
@@ -437,21 +441,21 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                   OutlinedButton.icon(
                     onPressed: _showArchivedHabits,
                     icon: const Icon(Icons.archive_outlined),
-                    label: const Text('Archiv'),
+                    label: Text(strings.archiveButton),
                   ),
                   FilledButton.icon(
                     onPressed: () {
                       _showHabitDialog();
                     },
                     icon: const Icon(Icons.add),
-                    label: const Text('Habit'),
+                    label: Text(strings.habitButton),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: habits.isEmpty
-                  ? const Center(child: Text('Noch keine aktiven Habits.'))
+                  ? Center(child: Text(strings.noActiveHabits))
                   : compact
                   ? _HabitCompactList(
                       habits: habits,
@@ -560,8 +564,13 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
 
 /// The compact "Kompakt" / full "Monat" switch shown in the header.
 class _HabitViewToggle extends StatelessWidget {
-  const _HabitViewToggle({required this.compact, required this.onChanged});
+  const _HabitViewToggle({
+    required this.strings,
+    required this.compact,
+    required this.onChanged,
+  });
 
+  final AppStrings strings;
   final bool compact;
   final ValueChanged<bool> onChanged;
 
@@ -573,16 +582,16 @@ class _HabitViewToggle extends StatelessWidget {
         visualDensity: VisualDensity.compact,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      segments: const [
+      segments: [
         ButtonSegment(
           value: true,
-          label: Text('Kompakt'),
-          icon: Icon(Icons.view_agenda_outlined),
+          label: Text(strings.compact),
+          icon: const Icon(Icons.view_agenda_outlined),
         ),
         ButtonSegment(
           value: false,
-          label: Text('Monat'),
-          icon: Icon(Icons.calendar_view_month_outlined),
+          label: Text(strings.month),
+          icon: const Icon(Icons.calendar_view_month_outlined),
         ),
       ],
       selected: {compact},
@@ -664,6 +673,7 @@ class _HabitCompactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final strings = controller.strings;
 
     final monthTotal = controller.habitTotalForMonth(
       habitId: habit.id,
@@ -691,7 +701,7 @@ class _HabitCompactRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   habit.description.isEmpty
-                      ? '$monthTotal diesen Monat'
+                      ? strings.nThisMonth(monthTotal)
                       : habit.description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -705,32 +715,32 @@ class _HabitCompactRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _CompactToggle(
-            label: '${_weekdayAbbr[yesterday.weekday - 1]}.',
-            caption: 'Gestern',
+            label: '${strings.weekdaysShort[yesterday.weekday - 1]}.',
+            caption: strings.yesterday,
             date: yesterday,
             habitId: habit.id,
             controller: controller,
           ),
           const SizedBox(width: 6),
           _CompactToggle(
-            label: '${_weekdayAbbr[today.weekday - 1]}.',
-            caption: 'Heute',
+            label: '${strings.weekdaysShort[today.weekday - 1]}.',
+            caption: strings.today,
             date: today,
             habitId: habit.id,
             controller: controller,
             isToday: true,
           ),
           PopupMenuButton<String>(
-            tooltip: 'Habit verwalten',
+            tooltip: strings.manageHabit,
             iconSize: 20,
             onSelected: (value) {
               if (value == 'edit') onEdit();
               if (value == 'archive') controller.archiveHabit(habit.id);
             },
             itemBuilder: (context) {
-              return const [
-                PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
-                PopupMenuItem(value: 'archive', child: Text('Archivieren')),
+              return [
+                PopupMenuItem(value: 'edit', child: Text(strings.edit)),
+                PopupMenuItem(value: 'archive', child: Text(strings.archive)),
               ];
             },
           ),
@@ -864,7 +874,7 @@ class _FrozenHabitColumn extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          '${_weekdayAbbr[date.weekday - 1]}. ${date.day}.',
+          '${controller.strings.weekdaysShort[date.weekday - 1]}. ${date.day}.',
           style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
         ),
       ],
@@ -874,6 +884,7 @@ class _FrozenHabitColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final strings = controller.strings;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -892,13 +903,13 @@ class _FrozenHabitColumn extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: nameWidth,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Habit',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          strings.habitColumn,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -907,7 +918,7 @@ class _FrozenHabitColumn extends StatelessWidget {
                     width: cellWidth,
                     child: _dayHeader(
                       context,
-                      label: 'Gestern',
+                      label: strings.yesterday,
                       date: yesterday,
                       isToday: false,
                     ),
@@ -917,7 +928,7 @@ class _FrozenHabitColumn extends StatelessWidget {
                     isToday: true,
                     child: _dayHeader(
                       context,
-                      label: 'Heute',
+                      label: strings.today,
                       date: today,
                       isToday: true,
                     ),
@@ -1033,7 +1044,7 @@ class _HabitNameCell extends StatelessWidget {
             ),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Habit verwalten',
+            tooltip: controller.strings.manageHabit,
             padding: EdgeInsets.zero,
             iconSize: 18,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
@@ -1047,9 +1058,15 @@ class _HabitNameCell extends StatelessWidget {
               }
             },
             itemBuilder: (context) {
-              return const [
-                PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
-                PopupMenuItem(value: 'archive', child: Text('Archivieren')),
+              return [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Text(controller.strings.edit),
+                ),
+                PopupMenuItem(
+                  value: 'archive',
+                  child: Text(controller.strings.archive),
+                ),
               ];
             },
           ),
@@ -1172,9 +1189,9 @@ class _TotalColumn extends StatelessWidget {
               height: _kHeaderHeight,
               color: colorScheme.surfaceContainerHighest,
               alignment: Alignment.center,
-              child: const Text(
-                'Gesamt',
-                style: TextStyle(fontWeight: FontWeight.w700),
+              child: Text(
+                controller.strings.totalColumn,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
             for (final habit in habits)
@@ -1256,10 +1273,10 @@ class _HabitDayCell extends StatelessWidget {
       height: double.infinity,
       child: Tooltip(
         message: disabled
-            ? 'Zukünftige Tage sind gesperrt.'
+            ? controller.strings.futureDaysLocked
             : completed
-            ? 'Markierung entfernen'
-            : 'Tag markieren',
+            ? controller.strings.removeMark
+            : controller.strings.markDay,
         child: Ink(
           color: cellColor,
           child: InkWell(

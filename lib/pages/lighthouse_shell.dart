@@ -45,6 +45,8 @@ class _LighthouseShellState extends State<LighthouseShell> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = widget.controller.strings;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final showSidebar = constraints.maxWidth >= 850;
@@ -73,25 +75,26 @@ class _LighthouseShellState extends State<LighthouseShell> {
                     child: _LighthouseLogo(),
                   ),
 
-                  destinations: const [
+                  destinations: [
                     NavigationRailDestination(
-                      icon: Icon(Icons.auto_awesome_outlined),
-                      selectedIcon: Icon(Icons.auto_awesome),
-                      label: Text('Good Things'),
+                      icon: const Icon(Icons.auto_awesome_outlined),
+                      selectedIcon: const Icon(Icons.auto_awesome),
+                      label: Text(strings.goodThings),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.grid_view_outlined),
-                      selectedIcon: Icon(Icons.grid_view),
-                      label: Text('Habits'),
+                      icon: const Icon(Icons.grid_view_outlined),
+                      selectedIcon: const Icon(Icons.grid_view),
+                      label: Text(strings.habits),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.insights_outlined),
-                      selectedIcon: Icon(Icons.insights),
-                      label: Text('Review'),
+                      icon: const Icon(Icons.insights_outlined),
+                      selectedIcon: const Icon(Icons.insights),
+                      label: Text(strings.review),
                     ),
                   ],
 
                   trailing: _SidebarSettingsButton(
+                    label: strings.settings,
                     selected: _selectedIndex == 3,
                     onPressed: () {
                       _selectPage(3);
@@ -128,26 +131,26 @@ class _LighthouseShellState extends State<LighthouseShell> {
           bottomNavigationBar: NavigationBar(
             selectedIndex: _selectedIndex,
             onDestinationSelected: _selectPage,
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                icon: Icon(Icons.auto_awesome_outlined),
-                selectedIcon: Icon(Icons.auto_awesome),
-                label: 'Good',
+                icon: const Icon(Icons.auto_awesome_outlined),
+                selectedIcon: const Icon(Icons.auto_awesome),
+                label: strings.navGood,
               ),
               NavigationDestination(
-                icon: Icon(Icons.grid_view_outlined),
-                selectedIcon: Icon(Icons.grid_view),
-                label: 'Habits',
+                icon: const Icon(Icons.grid_view_outlined),
+                selectedIcon: const Icon(Icons.grid_view),
+                label: strings.habits,
               ),
               NavigationDestination(
-                icon: Icon(Icons.insights_outlined),
-                selectedIcon: Icon(Icons.insights),
-                label: 'Review',
+                icon: const Icon(Icons.insights_outlined),
+                selectedIcon: const Icon(Icons.insights),
+                label: strings.review,
               ),
               NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
+                selectedIcon: const Icon(Icons.settings),
+                label: strings.settings,
               ),
             ],
           ),
@@ -195,10 +198,12 @@ class _LighthouseLogo extends StatelessWidget {
 
 class _SidebarSettingsButton extends StatelessWidget {
   const _SidebarSettingsButton({
+    required this.label,
     required this.selected,
     required this.onPressed,
   });
 
+  final String label;
   final bool selected;
   final VoidCallback onPressed;
 
@@ -219,7 +224,7 @@ class _SidebarSettingsButton extends StatelessWidget {
       child: Semantics(
         button: true,
         selected: selected,
-        label: 'Settings',
+        label: label,
         child: Material(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(28),
@@ -240,7 +245,7 @@ class _SidebarSettingsButton extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      'Settings',
+                      label,
                       style: TextStyle(
                         color: foregroundColor,
                         fontWeight: selected

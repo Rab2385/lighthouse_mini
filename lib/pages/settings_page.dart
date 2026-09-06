@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import '../state/lighthouse_controller.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -16,10 +17,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _savingName = false;
 
+  AppStrings get _strings => widget.controller.strings;
+
   @override
   void initState() {
     super.initState();
-
     _nameController = TextEditingController(text: widget.controller.userName);
   }
 
@@ -30,9 +32,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveName() async {
-    setState(() {
-      _savingName = true;
-    });
+    setState(() => _savingName = true);
 
     await widget.controller.setUserName(_nameController.text);
 
@@ -40,40 +40,30 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    setState(() {
-      _savingName = false;
-    });
+    setState(() => _savingName = false);
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Name gespeichert.')));
+    ).showSnackBar(SnackBar(content: Text(_strings.nameSaved)));
   }
 
   Future<void> _clearAllData() async {
+    final strings = _strings;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Alle lokalen Daten löschen?'),
-          content: const Text(
-            'Good Things, Habit-Markierungen, '
-            'eigene Habits und Einstellungen '
-            'werden dauerhaft gelöscht. '
-            'Dieser Schritt kann nicht '
-            'rückgängig gemacht werden.',
-          ),
+          title: Text(strings.clearAllDataQ),
+          content: Text(strings.clearAllDataText),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
-              child: const Text('Abbrechen'),
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(strings.cancel),
             ),
             FilledButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Alles löschen'),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(strings.deleteEverything),
             ),
           ],
         );
@@ -85,16 +75,15 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     await widget.controller.clearAllData();
-
     _nameController.clear();
 
     if (!mounted) {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lokale Daten wurden gelöscht.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(_strings.localDataDeleted)));
   }
 
   @override
@@ -102,6 +91,30 @@ class _SettingsPageState extends State<SettingsPage> {
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, child) {
+        final theme = Theme.of(context);
+        final strings = _strings;
+
+        Widget sectionCard({required String title, required Widget child}) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  child,
+                ],
+              ),
+            ),
+          );
+        }
+
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: SingleChildScrollView(
@@ -114,141 +127,111 @@ class _SettingsPageState extends State<SettingsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Settings',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      strings.settings,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Aussehen, Name und lokale Daten.',
+                      strings.settingsSubtitle,
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 22),
+
+                    sectionCard(
+                      title: strings.language,
+                      child: SegmentedButton<String>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(value: 'de', label: Text('Deutsch')),
+                          ButtonSegment(value: 'en', label: Text('English')),
+                        ],
+                        selected: {widget.controller.languageCode},
+                        onSelectionChanged: (selection) {
+                          widget.controller.setLanguage(selection.first);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     Card(
+                      child: SwitchListTile(
+                        title: Text(strings.darkMode),
+                        subtitle: Text(strings.darkModeSubtitle),
+                        secondary: const Icon(Icons.dark_mode_outlined),
+                        value: widget.controller.darkMode,
+                        onChanged: widget.controller.setDarkMode,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    sectionCard(
+                      title: strings.yourName,
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SwitchListTile(
-                            title: const Text('Dark Mode'),
-                            subtitle: const Text(
-                              'Ruhiges dunkles Petrol-Design.',
+                          Text(strings.yourNameSubtitle),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _nameController,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _saveName(),
+                            decoration: InputDecoration(
+                              labelText: strings.name,
+                              hintText: strings.nameHint,
                             ),
-                            secondary: const Icon(Icons.dark_mode_outlined),
-                            value: widget.controller.darkMode,
-                            onChanged: (value) {
-                              widget.controller.setDarkMode(value);
-                            },
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: FilledButton.icon(
+                              onPressed: _savingName ? null : _saveName,
+                              icon: _savingName
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.save_outlined),
+                              label: Text(strings.save),
+                            ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Dein Name',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Wird für die persönliche '
-                              'Begrüßung auf der Good-Things-Seite '
-                              'genutzt.',
-                            ),
-                            const SizedBox(height: 16),
-                            TextField(
-                              controller: _nameController,
-                              textInputAction: TextInputAction.done,
-                              onSubmitted: (_) => _saveName(),
-                              decoration: const InputDecoration(
-                                labelText: 'Name',
-                                hintText: 'Zum Beispiel Robert',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: FilledButton.icon(
-                                onPressed: _savingName ? null : _saveName,
-                                icon: _savingName
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(Icons.save_outlined),
-                                label: const Text('Speichern'),
-                              ),
-                            ),
-                          ],
-                        ),
+
+                    sectionCard(
+                      title: strings.privacy,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.lock_outline, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(strings.privacyText)),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Card(
-                      child: const Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.lock_outline),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Privacy',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              'Alle Einträge werden derzeit '
-                              'nur lokal auf diesem Gerät '
-                              'gespeichert. Es werden keine '
-                              'Journaltexte an einen Server '
-                              'übertragen.',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Gefahrenzone',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Löscht alle lokalen Daten '
-                              'dieser Lighthouse-Installation.',
-                            ),
-                            const SizedBox(height: 16),
-                            OutlinedButton.icon(
-                              onPressed: _clearAllData,
-                              icon: const Icon(Icons.delete_forever),
-                              label: const Text('Alle lokalen Daten löschen'),
-                            ),
-                          ],
-                        ),
+
+                    sectionCard(
+                      title: strings.dangerZone,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(strings.dangerZoneText),
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            onPressed: _clearAllData,
+                            icon: const Icon(Icons.delete_forever),
+                            label: Text(strings.clearAllData),
+                          ),
+                        ],
                       ),
                     ),
                   ],

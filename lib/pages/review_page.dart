@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../state/lighthouse_controller.dart';
 
@@ -15,23 +16,10 @@ class ReviewPage extends StatefulWidget {
 }
 
 class _ReviewPageState extends State<ReviewPage> {
-  static const List<String> _monthNames = [
-    'Januar',
-    'Februar',
-    'März',
-    'April',
-    'Mai',
-    'Juni',
-    'Juli',
-    'August',
-    'September',
-    'Oktober',
-    'November',
-    'Dezember',
-  ];
-
   _RangePreset _preset = _RangePreset.thisMonth;
   late DateTimeRange _range;
+
+  AppStrings get _strings => widget.controller.strings;
 
   @override
   void initState() {
@@ -98,7 +86,7 @@ class _ReviewPageState extends State<ReviewPage> {
       firstDate: firstDate,
       lastDate: lastDate,
       initialDateRange: DateTimeRange(start: safeStart, end: safeEnd),
-      helpText: 'Zeitraum wählen',
+      helpText: _strings.pickRange,
     );
 
     if (picked == null || !mounted) {
@@ -126,12 +114,6 @@ class _ReviewPageState extends State<ReviewPage> {
     return utcEnd.difference(utcStart).inDays + 1;
   }
 
-  String _twoDigits(int value) => value.toString().padLeft(2, '0');
-
-  String _formatDate(DateTime date) {
-    return '${_twoDigits(date.day)}.${_twoDigits(date.month)}.${date.year}';
-  }
-
   String _formatRange(DateTimeRange range) {
     final start = range.start;
     final end = range.end;
@@ -144,10 +126,10 @@ class _ReviewPageState extends State<ReviewPage> {
         end.day == lastDayOfStartMonth;
 
     if (isWholeMonth) {
-      return '${_monthNames[start.month - 1]} ${start.year}';
+      return _strings.monthAndYear(start);
     }
 
-    return '${_formatDate(start)} – ${_formatDate(end)}';
+    return '${_strings.formatDate(start)} – ${_strings.formatDate(end)}';
   }
 
   @override
@@ -186,9 +168,12 @@ class _ReviewPageState extends State<ReviewPage> {
 
         final recurring = _recurringEntries(entries);
 
+        final strings = _strings;
+
         return Column(
           children: [
             _ReviewHeader(
+              strings: strings,
               rangeLabel: _formatRange(_range),
               rangeDays: totalRangeDays,
               preset: _preset,
@@ -206,31 +191,31 @@ class _ReviewPageState extends State<ReviewPage> {
                       children: [
                         _MetricCard(
                           icon: Icons.auto_awesome,
-                          label: 'Good Things',
+                          label: strings.reviewGood,
                           value: entries.length.toString(),
                         ),
                         _MetricCard(
                           icon: Icons.calendar_today,
-                          label: 'Tage mit Einträgen',
+                          label: strings.daysWithEntries,
                           value: daysWithEntries.toString(),
                         ),
                         _MetricCard(
                           icon: Icons.arrow_forward,
-                          label: 'Ahead',
+                          label: strings.ahead,
                           value: aheadCount.toString(),
                         ),
                         _MetricCard(
                           icon: Icons.grid_view,
-                          label: 'Aktive Habits',
+                          label: strings.activeHabits,
                           value: controller.activeHabits.length.toString(),
                         ),
                       ],
                     ),
                     const SizedBox(height: 18),
                     _SectionCard(
-                      title: 'Habits',
+                      title: strings.habits,
                       child: controller.activeHabits.isEmpty
-                          ? const Text('Noch keine aktiven Habits.')
+                          ? Text(strings.noActiveHabits)
                           : Column(
                               children: [
                                 for (final habit in controller.activeHabits)
@@ -249,12 +234,9 @@ class _ReviewPageState extends State<ReviewPage> {
                     ),
                     const SizedBox(height: 18),
                     _SectionCard(
-                      title: 'Wiederkehrende Einträge',
+                      title: strings.recurringEntries,
                       child: recurring.isEmpty
-                          ? const Text(
-                              'Noch keine wiederkehrenden '
-                              'Texte in diesem Zeitraum.',
-                            )
+                          ? Text(strings.noRecurring)
                           : Column(
                               children: [
                                 for (final item in recurring)
@@ -313,12 +295,14 @@ class _ReviewPageState extends State<ReviewPage> {
 
 class _ReviewHeader extends StatelessWidget {
   const _ReviewHeader({
+    required this.strings,
     required this.rangeLabel,
     required this.rangeDays,
     required this.preset,
     required this.onPresetSelected,
   });
 
+  final AppStrings strings;
   final String rangeLabel;
   final int rangeDays;
   final _RangePreset preset;
@@ -334,15 +318,14 @@ class _ReviewHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Review',
+            strings.review,
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            '$rangeLabel · '
-            '$rangeDays ${rangeDays == 1 ? 'Tag' : 'Tage'}',
+            '$rangeLabel · ${strings.rangeDays(rangeDays)}',
             style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 14),
@@ -352,22 +335,22 @@ class _ReviewHeader extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _PresetChip(
-                label: 'Dieser Monat',
+                label: strings.thisMonth,
                 selected: preset == _RangePreset.thisMonth,
                 onSelected: () => onPresetSelected(_RangePreset.thisMonth),
               ),
               _PresetChip(
-                label: 'Letzte 7 Tage',
+                label: strings.last7Days,
                 selected: preset == _RangePreset.last7Days,
                 onSelected: () => onPresetSelected(_RangePreset.last7Days),
               ),
               _PresetChip(
-                label: 'Letzte 30 Tage',
+                label: strings.last30Days,
                 selected: preset == _RangePreset.last30Days,
                 onSelected: () => onPresetSelected(_RangePreset.last30Days),
               ),
               _PresetChip(
-                label: 'Dieses Jahr',
+                label: strings.thisYear,
                 selected: preset == _RangePreset.thisYear,
                 onSelected: () => onPresetSelected(_RangePreset.thisYear),
               ),
@@ -376,8 +359,8 @@ class _ReviewHeader extends StatelessWidget {
                 icon: const Icon(Icons.date_range_outlined, size: 18),
                 label: Text(
                   preset == _RangePreset.custom
-                      ? 'Zeitraum: $rangeLabel'
-                      : 'Zeitraum wählen',
+                      ? strings.pickedRange(rangeLabel)
+                      : strings.pickRange,
                 ),
                 style: preset == _RangePreset.custom
                     ? OutlinedButton.styleFrom(
