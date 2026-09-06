@@ -112,10 +112,6 @@ class AppStrings {
   String get markDay => _p('Tag markieren', 'Mark day');
 
   // ---- Review ------------------------------------------------------
-  String get reviewGood => 'Good Things';
-  String get daysWithEntries => _p('Tage mit Einträgen', 'Days with entries');
-  String get ahead => 'Ahead';
-  String get activeHabits => _p('Aktive Habits', 'Active habits');
   String get recurringEntries =>
       _p('Wiederkehrende Einträge', 'Recurring entries');
   String get noRecurring => _p(

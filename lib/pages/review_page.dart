@@ -145,20 +145,6 @@ class _ReviewPageState extends State<ReviewPage> {
 
         final entries = controller.goodThingsInRange(start, end);
 
-        final daysWithEntries = entries
-            .map(
-              (entry) =>
-                  '${entry.date.year}-'
-                  '${entry.date.month}-'
-                  '${entry.date.day}',
-            )
-            .toSet()
-            .length;
-
-        final aheadCount = entries
-            .where((entry) => entry.date.isAfter(today))
-            .length;
-
         final totalRangeDays = _rangeLengthInDays(start, end);
 
         // Habits can only be completed up to today, so the percentage uses the
@@ -185,33 +171,6 @@ class _ReviewPageState extends State<ReviewPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        _MetricCard(
-                          icon: Icons.auto_awesome,
-                          label: strings.reviewGood,
-                          value: entries.length.toString(),
-                        ),
-                        _MetricCard(
-                          icon: Icons.calendar_today,
-                          label: strings.daysWithEntries,
-                          value: daysWithEntries.toString(),
-                        ),
-                        _MetricCard(
-                          icon: Icons.arrow_forward,
-                          label: strings.ahead,
-                          value: aheadCount.toString(),
-                        ),
-                        _MetricCard(
-                          icon: Icons.grid_view,
-                          label: strings.activeHabits,
-                          value: controller.activeHabits.length.toString(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
                     _SectionCard(
                       title: strings.habits,
                       child: controller.activeHabits.isEmpty
@@ -394,55 +353,6 @@ class _PresetChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onSelected(),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 210,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              CircleAvatar(child: Icon(icon)),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
