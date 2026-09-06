@@ -125,6 +125,31 @@ class _GoodThingsPageState extends State<GoodThingsPage> {
     await widget.controller.updateGoodThing(id: entry.id, text: newText);
   }
 
+  Future<void> _deleteEntry(GoodThing entry) async {
+    await widget.controller.deleteGoodThing(entry.id);
+
+    if (!mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Eintrag gelöscht.'),
+        action: SnackBarAction(
+          label: 'Rückgängig',
+          onPressed: () {
+            widget.controller.addGoodThing(
+              date: entry.date,
+              text: entry.text,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final daysInMonth = DateTime(
@@ -183,6 +208,7 @@ class _GoodThingsPageState extends State<GoodThingsPage> {
                       results: searchResults,
                       controller: widget.controller,
                       onEdit: _editEntry,
+                      onDelete: _deleteEntry,
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
@@ -210,6 +236,7 @@ class _GoodThingsPageState extends State<GoodThingsPage> {
                               widget.controller.maximumFutureDate,
                           controller: widget.controller,
                           onEdit: _editEntry,
+                          onDelete: _deleteEntry,
                         );
                       },
                     ),
@@ -227,12 +254,14 @@ class _SearchResults extends StatelessWidget {
     required this.results,
     required this.controller,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final String query;
   final List<GoodThing> results;
   final LighthouseController controller;
   final Future<void> Function(GoodThing entry) onEdit;
+  final Future<void> Function(GoodThing entry) onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -286,7 +315,7 @@ class _SearchResults extends StatelessWidget {
                 }
 
                 if (value == 'delete') {
-                  controller.deleteGoodThing(entry.id);
+                  onDelete(entry);
                 }
               },
               itemBuilder: (context) {
@@ -317,6 +346,7 @@ class _GoodThingsDayCard extends StatelessWidget {
     required this.maximumFutureDate,
     required this.controller,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final DateTime date;
@@ -326,6 +356,7 @@ class _GoodThingsDayCard extends StatelessWidget {
   final DateTime maximumFutureDate;
   final LighthouseController controller;
   final Future<void> Function(GoodThing entry) onEdit;
+  final Future<void> Function(GoodThing entry) onDelete;
 
   bool get _isToday {
     final today = controller.today;
@@ -412,7 +443,7 @@ class _GoodThingsDayCard extends StatelessWidget {
                   child: _SavedGoodThingLine(
                     entry: entry,
                     onEdit: () => onEdit(entry),
-                    onDelete: () => controller.deleteGoodThing(entry.id),
+                    onDelete: () => onDelete(entry),
                   ),
                 ),
               if (canAdd)
@@ -573,8 +604,20 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
 
   @override
   Widget build(BuildContext context) {
-    final suggestions = (_hasFocus || _query.trim().isNotEmpty)
-        ? widget.controller.suggestionsFor(_query)
+    // Texts already saved for this day – never suggest an instant duplicate.
+    final existingForDay = widget.controller
+        .goodThingsForDate(widget.date)
+        .map((entry) => entry.text.trim().toLowerCase())
+        .toSet();
+
+    final suggestions =
+        (_hasFocus || _query.trim().isNotEmpty)
+        ? widget.controller
+              .suggestionsFor(_query)
+              .where(
+                (text) => !existingForDay.contains(text.trim().toLowerCase()),
+              )
+              .toList()
         : const <String>[];
 
     return Column(

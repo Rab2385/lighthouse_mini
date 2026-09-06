@@ -46,8 +46,14 @@ class _HabitsPageState extends State<HabitsPage> {
   }
 
   void _showNextMonth() {
+    final nextMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+
+    if (nextMonth.isAfter(widget.controller.maximumFutureMonth)) {
+      return;
+    }
+
     setState(() {
-      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+      _selectedMonth = nextMonth;
     });
   }
 
@@ -57,6 +63,12 @@ class _HabitsPageState extends State<HabitsPage> {
     setState(() {
       _selectedMonth = DateTime(today.year, today.month);
     });
+  }
+
+  bool get _canShowNextMonth {
+    final nextMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+
+    return !nextMonth.isAfter(widget.controller.maximumFutureMonth);
   }
 
   Future<void> _showHabitDialog({Habit? habit}) async {
@@ -75,77 +87,83 @@ class _HabitsPageState extends State<HabitsPage> {
           title: Text(habit == null ? 'Habit hinzufügen' : 'Habit bearbeiten'),
           content: SizedBox(
             width: 430,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'Zum Beispiel Reading',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emojiController,
-                  decoration: const InputDecoration(
-                    labelText: 'Emoji',
-                    hintText: '📖',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _defaultHabitEmojis.map((emoji) {
-                      final isSelected = emojiController.text == emoji;
+            child: StatefulBuilder(
+              builder: (context, setDialogState) {
+                final colorScheme = Theme.of(context).colorScheme;
 
-                      return GestureDetector(
-                        onTap: () {
-                          emojiController.text = emoji;
-                          setState(() {});
-                        },
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.16)
-                                : const Color(0xFFF4F6F8),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : const Color(0xFFD8DEE4),
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                        hintText: 'Zum Beispiel Reading',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emojiController,
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: 'Emoji',
+                        hintText: '📖',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _defaultHabitEmojis.map((emoji) {
+                          final isSelected = emojiController.text == emoji;
+
+                          return GestureDetector(
+                            onTap: () {
+                              emojiController.text = emoji;
+                              setDialogState(() {});
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? colorScheme.primary
+                                          .withValues(alpha: 0.16)
+                                    : colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? colorScheme.primary
+                                      : colorScheme.outlineVariant,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  emoji,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              emoji,
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Beschreibung',
-                    hintText: 'Was bedeutet die Markierung?',
-                  ),
-                ),
-              ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descriptionController,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Beschreibung',
+                        hintText: 'Was bedeutet die Markierung?',
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           actions: [
@@ -308,6 +326,13 @@ class _HabitsPageState extends State<HabitsPage> {
 
     final tableWidth = 220 + (daysInMonth * 44) + 90;
 
+    final today = widget.controller.today;
+    final todayDay =
+        (today.year == _selectedMonth.year &&
+            today.month == _selectedMonth.month)
+        ? today.day
+        : null;
+
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, child) {
@@ -320,7 +345,7 @@ class _HabitsPageState extends State<HabitsPage> {
               subtitle: 'Ein Klick markiert den Tag.',
               selectedMonth: _selectedMonth,
               onPreviousMonth: _showPreviousMonth,
-              onNextMonth: _showNextMonth,
+              onNextMonth: _canShowNextMonth ? _showNextMonth : null,
               onToday: _showCurrentMonth,
               trailing: Wrap(
                 spacing: 8,
@@ -348,9 +373,11 @@ class _HabitsPageState extends State<HabitsPage> {
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE4E7EC)),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: SingleChildScrollView(
@@ -359,12 +386,16 @@ class _HabitsPageState extends State<HabitsPage> {
                             width: tableWidth.toDouble(),
                             child: Column(
                               children: [
-                                _HabitHeaderRow(daysInMonth: daysInMonth),
+                                _HabitHeaderRow(
+                                  daysInMonth: daysInMonth,
+                                  todayDay: todayDay,
+                                ),
                                 for (final habit in habits)
                                   _HabitRow(
                                     habit: habit,
                                     selectedMonth: _selectedMonth,
                                     daysInMonth: daysInMonth,
+                                    todayDay: todayDay,
                                     controller: widget.controller,
                                     onEdit: () {
                                       _showHabitDialog(habit: habit);
@@ -385,15 +416,18 @@ class _HabitsPageState extends State<HabitsPage> {
 }
 
 class _HabitHeaderRow extends StatelessWidget {
-  const _HabitHeaderRow({required this.daysInMonth});
+  const _HabitHeaderRow({required this.daysInMonth, this.todayDay});
 
   final int daysInMonth;
+  final int? todayDay;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       height: 58,
-      color: const Color(0xFFF6F7F9),
+      color: colorScheme.surfaceContainerHighest,
       child: Row(
         children: [
           const SizedBox(
@@ -415,7 +449,10 @@ class _HabitHeaderRow extends StatelessWidget {
               child: Center(
                 child: Text(
                   day.toString().padLeft(2, '0'),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: day == todayDay ? colorScheme.primary : null,
+                  ),
                 ),
               ),
             ),
@@ -441,16 +478,20 @@ class _HabitRow extends StatelessWidget {
     required this.daysInMonth,
     required this.controller,
     required this.onEdit,
+    this.todayDay,
   });
 
   final Habit habit;
   final DateTime selectedMonth;
   final int daysInMonth;
+  final int? todayDay;
   final LighthouseController controller;
   final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     final total = controller.habitTotalForMonth(
       habitId: habit.id,
       selectedMonth: selectedMonth,
@@ -458,8 +499,8 @@ class _HabitRow extends StatelessWidget {
 
     return Container(
       height: 66,
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFE8EAF0))),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Row(
         children: [
@@ -513,6 +554,7 @@ class _HabitRow extends StatelessWidget {
               habitId: habit.id,
               date: DateTime(selectedMonth.year, selectedMonth.month, day),
               controller: controller,
+              isToday: day == todayDay,
             ),
           SizedBox(
             width: 90,
@@ -523,7 +565,7 @@ class _HabitRow extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F3F6),
+                  color: colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -544,14 +586,18 @@ class _HabitDayCell extends StatelessWidget {
     required this.habitId,
     required this.date,
     required this.controller,
+    this.isToday = false,
   });
 
   final String habitId;
   final DateTime date;
   final LighthouseController controller;
+  final bool isToday;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     final disabled = date.isAfter(controller.today);
 
     final completed = controller.isHabitCompleted(habitId: habitId, date: date);
@@ -559,10 +605,16 @@ class _HabitDayCell extends StatelessWidget {
     final isWeekend =
         date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
 
+    final Color? cellColor = isToday
+        ? colorScheme.primary.withValues(alpha: 0.08)
+        : isWeekend
+        ? colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
+        : null;
+
     return Container(
       width: 44,
       height: double.infinity,
-      color: isWeekend ? const Color(0xFFFAFAFB) : null,
+      color: cellColor,
       child: Center(
         child: Tooltip(
           message: disabled
@@ -589,14 +641,18 @@ class _HabitDayCell extends StatelessWidget {
                 border: Border.all(
                   width: 1.5,
                   color: disabled
-                      ? const Color(0xFFD3D6DC)
+                      ? colorScheme.outlineVariant
                       : completed
-                      ? Theme.of(context).colorScheme.primary
-                      : const Color(0xFF7B9CDE),
+                      ? colorScheme.primary
+                      : colorScheme.primary.withValues(alpha: 0.55),
                 ),
               ),
               child: completed
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  ? Icon(
+                      Icons.check,
+                      size: 14,
+                      color: colorScheme.onPrimary,
+                    )
                   : null,
             ),
           ),
