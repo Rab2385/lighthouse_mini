@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../pages/lighthouse_shell.dart';
 import '../state/lighthouse_controller.dart';
@@ -21,6 +22,13 @@ class LighthouseApp extends StatelessWidget {
           theme: _buildLightTheme(),
           darkTheme: _buildDarkTheme(),
           themeMode: controller.darkMode ? ThemeMode.dark : ThemeMode.light,
+          locale: const Locale('de'),
+          supportedLocales: const [Locale('de'), Locale('en')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: LighthouseShell(controller: controller),
         );
       },

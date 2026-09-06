@@ -129,6 +129,54 @@ class LighthouseController extends ChangeNotifier {
     return result;
   }
 
+  /// Good Things whose date falls within [start] .. [end] (both inclusive,
+  /// day precision), sorted by date.
+  List<GoodThing> goodThingsInRange(DateTime start, DateTime end) {
+    final from = _dateOnly(start);
+    final to = _dateOnly(end);
+
+    final result =
+        _goodThings.where((entry) {
+          final date = _dateOnly(entry.date);
+          return !date.isBefore(from) && !date.isAfter(to);
+        }).toList()..sort(
+          (first, second) => first.date.compareTo(second.date),
+        );
+
+    return result;
+  }
+
+  /// Number of days in [start] .. [end] (both inclusive) on which [habitId]
+  /// is marked complete.
+  int habitCompletionsInRange({
+    required String habitId,
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final from = _dateOnly(start);
+    final to = _dateOnly(end);
+
+    if (to.isBefore(from)) {
+      return 0;
+    }
+
+    var total = 0;
+
+    for (var offset = 0; ; offset++) {
+      final date = DateTime(from.year, from.month, from.day + offset);
+
+      if (date.isAfter(to)) {
+        break;
+      }
+
+      if (isHabitCompleted(habitId: habitId, date: date)) {
+        total++;
+      }
+    }
+
+    return total;
+  }
+
   List<GoodThing> searchGoodThings(String query) {
     final cleanQuery = query.trim().toLowerCase();
 
