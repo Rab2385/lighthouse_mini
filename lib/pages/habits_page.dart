@@ -38,6 +38,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
   final ScrollController _gridScrollController = ScrollController();
 
   double _gridCellWidth = 44;
+  Orientation? _lastOrientation;
 
   AppStrings get _strings => widget.controller.strings;
 
@@ -50,6 +51,21 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
     _selectedMonth = DateTime(today.year, today.month);
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollGridToToday());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // On a phone the orientation, not the saved preference, chooses the view.
+    // When it flips (and the month grid is now on screen) re-centre on today.
+    final orientation = MediaQuery.orientationOf(context);
+    if (_lastOrientation != null && orientation != _lastOrientation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollGridToToday();
+      });
+    }
+    _lastOrientation = orientation;
   }
 
   @override
@@ -401,19 +417,31 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
         ? today.day
         : null;
 
+    final isPhone = MediaQuery.sizeOf(context).shortestSide < 600;
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, child) {
         final habits = widget.controller.activeHabits;
-        final compact = widget.controller.habitCompactView;
         final strings = _strings;
+
+        // On a phone: portrait shows the compact list, landscape shows the
+        // month grid — it follows how the phone is held. Elsewhere the
+        // Kompakt / Monat toggle in Settings-style header decides.
+        final compact = isPhone
+            ? !isLandscape
+            : widget.controller.habitCompactView;
 
         return Column(
           children: [
             MonthHeader(
               title: strings.habitTracker,
               strings: strings,
-              subtitle: compact
+              subtitle: isPhone && !isLandscape
+                  ? strings.habitsRotateHint
+                  : compact
                   ? strings.habitsCompactHint
                   : strings.habitsMonthHint,
               selectedMonth: _selectedMonth,
@@ -426,18 +454,21 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  _HabitViewToggle(
-                    strings: strings,
-                    compact: compact,
-                    onChanged: (value) {
-                      widget.controller.setHabitCompactView(value);
-                      if (!value) {
-                        WidgetsBinding.instance.addPostFrameCallback(
-                          (_) => _scrollGridToToday(),
-                        );
-                      }
-                    },
-                  ),
+                  // The manual toggle only makes sense where orientation
+                  // isn't already choosing the view.
+                  if (!isPhone)
+                    _HabitViewToggle(
+                      strings: strings,
+                      compact: compact,
+                      onChanged: (value) {
+                        widget.controller.setHabitCompactView(value);
+                        if (!value) {
+                          WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => _scrollGridToToday(),
+                          );
+                        }
+                      },
+                    ),
                   OutlinedButton.icon(
                     onPressed: _showArchivedHabits,
                     icon: const Icon(Icons.archive_outlined),

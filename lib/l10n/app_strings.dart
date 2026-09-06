@@ -75,6 +75,10 @@ class AppStrings {
   );
   String get habitsMonthHint =>
       _p('Der ganze Monat zum Nachtragen.', 'The whole month for catching up.');
+  String get habitsRotateHint => _p(
+    'Quer halten zeigt den ganzen Monat.',
+    'Turn sideways for the whole month.',
+  );
   String get compact => _p('Kompakt', 'Compact');
   String get month => _p('Monat', 'Month');
   String get archiveButton => _p('Archiv', 'Archive');
