@@ -295,11 +295,6 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
             MonthHeader(
               title: strings.habitTracker,
               strings: strings,
-              subtitle: isPhone && !isLandscape
-                  ? strings.habitsRotateHint
-                  : compact
-                  ? strings.habitsCompactHint
-                  : strings.habitsMonthHint,
               selectedMonth: _selectedMonth,
               showMonthControls: !compact,
               onPreviousMonth: _showPreviousMonth,
