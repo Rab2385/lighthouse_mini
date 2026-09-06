@@ -4,10 +4,7 @@ import '../pages/lighthouse_shell.dart';
 import '../state/lighthouse_controller.dart';
 
 class LighthouseApp extends StatelessWidget {
-  const LighthouseApp({
-    super.key,
-    required this.controller,
-  });
+  const LighthouseApp({super.key, required this.controller});
 
   final LighthouseController controller;
 
@@ -19,16 +16,12 @@ class LighthouseApp extends StatelessWidget {
       animation: controller,
       builder: (context, child) {
         return MaterialApp(
-          title: 'Lighthouse Mini',
+          title: 'Lighthouse',
           debugShowCheckedModeBanner: false,
           theme: _buildLightTheme(),
           darkTheme: _buildDarkTheme(),
-          themeMode: controller.darkMode
-              ? ThemeMode.dark
-              : ThemeMode.light,
-          home: LighthouseShell(
-            controller: controller,
-          ),
+          themeMode: controller.darkMode ? ThemeMode.dark : ThemeMode.light,
+          home: LighthouseShell(controller: controller),
         );
       },
     );
@@ -57,9 +50,7 @@ class LighthouseApp extends StatelessWidget {
       navigationRailTheme: const NavigationRailThemeData(
         backgroundColor: Colors.white,
         indicatorColor: Color(0xFFE2F0F1),
-        selectedIconTheme: IconThemeData(
-          color: _petrol,
-        ),
+        selectedIconTheme: IconThemeData(color: _petrol),
         selectedLabelTextStyle: TextStyle(
           color: _petrol,
           fontWeight: FontWeight.w600,
@@ -71,9 +62,7 @@ class LighthouseApp extends StatelessWidget {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(
-            color: Color(0xFFE4E7EC),
-          ),
+          side: const BorderSide(color: Color(0xFFE4E7EC)),
         ),
       ),
     );
@@ -102,9 +91,7 @@ class LighthouseApp extends StatelessWidget {
       navigationRailTheme: const NavigationRailThemeData(
         backgroundColor: Color(0xFF172022),
         indicatorColor: Color(0xFF203A3D),
-        selectedIconTheme: IconThemeData(
-          color: Color(0xFF86CDD1),
-        ),
+        selectedIconTheme: IconThemeData(color: Color(0xFF86CDD1)),
         selectedLabelTextStyle: TextStyle(
           color: Color(0xFF86CDD1),
           fontWeight: FontWeight.w600,
@@ -116,9 +103,7 @@ class LighthouseApp extends StatelessWidget {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(
-            color: Color(0xFF2D3B3D),
-          ),
+          side: const BorderSide(color: Color(0xFF2D3B3D)),
         ),
       ),
       dividerColor: const Color(0xFF2D3B3D),
@@ -133,10 +118,7 @@ class LighthouseApp extends StatelessWidget {
     return InputDecorationTheme(
       filled: true,
       fillColor: fillColor,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 13,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: borderColor),
@@ -147,10 +129,7 @@ class LighthouseApp extends StatelessWidget {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(
-          color: focusColor,
-          width: 1.5,
-        ),
+        borderSide: BorderSide(color: focusColor, width: 1.5),
       ),
     );
   }
