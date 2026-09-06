@@ -1,7 +1,8 @@
-import 'package:sembast_web/sembast_web.dart';
+import 'package:sembast/sembast.dart';
 
 import '../models/good_thing.dart';
 import '../models/habit.dart';
+import 'database_open.dart';
 
 class LighthouseDatabase {
   static const String _databaseName = 'lighthouse_mini.db';
@@ -21,10 +22,7 @@ class LighthouseDatabase {
   Database? _database;
 
   Future<Database> get _db async {
-    return _database ??= await databaseFactoryWeb.openDatabase(
-      _databaseName,
-      version: 1,
-    );
+    return _database ??= await openLighthouseDatabase(_databaseName);
   }
 
   Future<List<GoodThing>> loadGoodThings() async {

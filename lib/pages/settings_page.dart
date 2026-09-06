@@ -286,10 +286,10 @@ class _SettingsPageState
                             SizedBox(height: 12),
                             Text(
                               'Alle Einträge werden derzeit '
-                              'nur lokal in der IndexedDB '
-                              'dieses Browsers gespeichert. '
-                              'Es werden keine Journaltexte '
-                              'an einen Server übertragen.',
+                              'nur lokal auf diesem Gerät '
+                              'gespeichert. Es werden keine '
+                              'Journaltexte an einen Server '
+                              'übertragen.',
                             ),
                           ],
                         ),

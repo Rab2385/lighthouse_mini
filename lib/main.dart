@@ -48,10 +48,9 @@ class _StartupErrorApp extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Der lokale Speicher (IndexedDB) ist in diesem '
-                    'Browser nicht verfügbar. Im privaten Modus mancher '
-                    'Browser ist das erwartbar – bitte in einem normalen '
-                    'Fenster erneut öffnen.',
+                    'Der lokale Speicher konnte nicht geöffnet werden. '
+                    'Im privaten Modus mancher Browser ist das erwartbar – '
+                    'dann bitte in einem normalen Fenster erneut öffnen.',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
