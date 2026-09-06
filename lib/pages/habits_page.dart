@@ -3,22 +3,8 @@ import 'package:flutter/material.dart';
 import '../l10n/app_strings.dart';
 import '../models/habit.dart';
 import '../state/lighthouse_controller.dart';
+import '../widgets/habit_editor_sheet.dart';
 import '../widgets/month_header.dart';
-
-const List<String> _defaultHabitEmojis = [
-  '💼',
-  '☕',
-  '💧',
-  '💻',
-  '🏃',
-  '🍷',
-  '📖',
-  '🧘',
-  '🍎',
-  '😴',
-  '📝',
-  '🎧',
-];
 
 const double _kHeaderHeight = 58;
 const double _kRowHeight = 62;
@@ -155,147 +141,11 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
   }
 
   Future<void> _showHabitDialog({Habit? habit}) async {
-    final nameController = TextEditingController(text: habit?.name ?? '');
-
-    final emojiController = TextEditingController(text: habit?.emoji ?? '');
-
-    final descriptionController = TextEditingController(
-      text: habit?.description ?? '',
+    await HabitEditorSheet.show(
+      context,
+      controller: widget.controller,
+      habit: habit,
     );
-
-    final strings = _strings;
-
-    final shouldSave = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(habit == null ? strings.addHabit : strings.editHabit),
-          content: SizedBox(
-            width: 430,
-            child: SingleChildScrollView(
-              child: StatefulBuilder(
-                builder: (context, setDialogState) {
-                  final colorScheme = Theme.of(context).colorScheme;
-
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: nameController,
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          labelText: strings.name,
-                          hintText: strings.habitNameHint,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: emojiController,
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: strings.emoji,
-                          hintText: '📖',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _defaultHabitEmojis.map((emoji) {
-                            final isSelected = emojiController.text == emoji;
-
-                            return GestureDetector(
-                              onTap: () {
-                                emojiController.text = emoji;
-                                setDialogState(() {});
-                              },
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? colorScheme.primary.withValues(
-                                          alpha: 0.16,
-                                        )
-                                      : colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? colorScheme.primary
-                                        : colorScheme.outlineVariant,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    emoji,
-                                    style: const TextStyle(fontSize: 20),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: descriptionController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          labelText: strings.description,
-                          hintText: strings.habitDescriptionHint,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext, false);
-              },
-              child: Text(strings.cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (nameController.text.trim().isEmpty) {
-                  return;
-                }
-
-                Navigator.pop(dialogContext, true);
-              },
-              child: Text(strings.save),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldSave == true) {
-      if (habit == null) {
-        await widget.controller.addHabit(
-          name: nameController.text,
-          emoji: emojiController.text,
-          description: descriptionController.text,
-        );
-      } else {
-        await widget.controller.updateHabit(
-          id: habit.id,
-          name: nameController.text,
-          emoji: emojiController.text,
-          description: descriptionController.text,
-        );
-      }
-    }
-
-    nameController.dispose();
-    emojiController.dispose();
-    descriptionController.dispose();
   }
 
   Future<void> _showArchivedHabits() async {

@@ -86,10 +86,23 @@ class AppStrings {
   String get noActiveHabits =>
       _p('Noch keine aktiven Habits.', 'No active habits yet.');
   String get addHabit => _p('Habit hinzufügen', 'Add habit');
+  String get newHabit => _p('Neuer Habit', 'New habit');
   String get editHabit => _p('Habit bearbeiten', 'Edit habit');
+  String get createHabit => _p('Habit anlegen', 'Create habit');
   String get name => _p('Name', 'Name');
-  String get habitNameHint => _p('Zum Beispiel Reading', 'For example Reading');
+  String get habitNameHint => _p('Zum Beispiel Lesen', 'For example Reading');
   String get emoji => 'Emoji';
+  String get symbol => _p('Symbol', 'Symbol');
+  String get searchSymbol => _p('Symbol suchen …', 'Search symbol …');
+  String get noSymbolMatch =>
+      _p('Kein passendes Symbol.', 'No matching symbol.');
+  String get emojiCatActivity => _p('Bewegung', 'Activity');
+  String get emojiCatFood => _p('Essen & Trinken', 'Food & drink');
+  String get emojiCatHealth => _p('Gesundheit', 'Health');
+  String get emojiCatWork => _p('Arbeit & Ziele', 'Work & goals');
+  String get emojiCatMind => _p('Geist & Kreativität', 'Mind & creativity');
+  String get emojiCatHome => _p('Zuhause', 'Home');
+  String get emojiCatNature => _p('Natur', 'Nature');
   String get description => _p('Beschreibung', 'Description');
   String get habitDescriptionHint =>
       _p('Was bedeutet die Markierung?', 'What does the mark mean?');
