@@ -124,10 +124,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
     final newText = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return _EditEntryDialog(
-          initialText: entry.text,
-          strings: _strings,
-        );
+        return _EditEntryDialog(initialText: entry.text, strings: _strings);
       },
     );
 
@@ -293,6 +290,7 @@ class _EditEntryDialogState extends State<_EditEntryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: Text(widget.strings.editEntry),
       content: SizedBox(
         width: 460,

@@ -172,84 +172,86 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
           title: Text(habit == null ? strings.addHabit : strings.editHabit),
           content: SizedBox(
             width: 430,
-            child: StatefulBuilder(
-              builder: (context, setDialogState) {
-                final colorScheme = Theme.of(context).colorScheme;
+            child: SingleChildScrollView(
+              child: StatefulBuilder(
+                builder: (context, setDialogState) {
+                  final colorScheme = Theme.of(context).colorScheme;
 
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: strings.name,
-                        hintText: strings.habitNameHint,
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: strings.name,
+                          hintText: strings.habitNameHint,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: emojiController,
-                      onChanged: (_) => setDialogState(() {}),
-                      decoration: InputDecoration(
-                        labelText: strings.emoji,
-                        hintText: '📖',
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emojiController,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
+                          labelText: strings.emoji,
+                          hintText: '📖',
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _defaultHabitEmojis.map((emoji) {
-                          final isSelected = emojiController.text == emoji;
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _defaultHabitEmojis.map((emoji) {
+                            final isSelected = emojiController.text == emoji;
 
-                          return GestureDetector(
-                            onTap: () {
-                              emojiController.text = emoji;
-                              setDialogState(() {});
-                            },
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? colorScheme.primary.withValues(
-                                        alpha: 0.16,
-                                      )
-                                    : colorScheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
+                            return GestureDetector(
+                              onTap: () {
+                                emojiController.text = emoji;
+                                setDialogState(() {});
+                              },
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
                                   color: isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.outlineVariant,
+                                      ? colorScheme.primary.withValues(
+                                          alpha: 0.16,
+                                        )
+                                      : colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? colorScheme.primary
+                                        : colorScheme.outlineVariant,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    emoji,
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
                                 ),
                               ),
-                              child: Center(
-                                child: Text(
-                                  emoji,
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                            );
+                          }).toList(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descriptionController,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        labelText: strings.description,
-                        hintText: strings.habitDescriptionHint,
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: descriptionController,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          labelText: strings.description,
+                          hintText: strings.habitDescriptionHint,
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
             ),
           ),
           actions: [
@@ -306,7 +308,11 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
           title: Text(strings.archivedHabits),
           content: SizedBox(
             width: 520,
-            height: 350,
+            // Shrink on short screens (e.g. a phone held in landscape).
+            height: (MediaQuery.sizeOf(dialogContext).height * 0.55).clamp(
+              180.0,
+              350.0,
+            ),
             child: AnimatedBuilder(
               animation: widget.controller,
               builder: (context, child) {
