@@ -121,46 +121,15 @@ class _GoodThingsPageState extends State<GoodThingsPage>
   }
 
   Future<void> _editEntry(GoodThing entry) async {
-    final textController = TextEditingController(text: entry.text);
-
     final newText = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(_strings.editEntry),
-          content: SizedBox(
-            width: 460,
-            child: TextField(
-              controller: textController,
-              autofocus: true,
-              minLines: 2,
-              maxLines: 6,
-              decoration: InputDecoration(labelText: _strings.goodThingLabel),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
-              child: Text(_strings.cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                final text = textController.text.trim();
-
-                if (text.isNotEmpty) {
-                  Navigator.pop(dialogContext, text);
-                }
-              },
-              child: Text(_strings.save),
-            ),
-          ],
+        return _EditEntryDialog(
+          initialText: entry.text,
+          strings: _strings,
         );
       },
     );
-
-    textController.dispose();
 
     if (newText == null) {
       return;
@@ -287,6 +256,62 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       controller: widget.controller,
       onEdit: _editEntry,
       onDelete: _deleteEntry,
+    );
+  }
+}
+
+/// Owns its own [TextEditingController] so it is disposed with the dialog,
+/// never synchronously while the pop transition is still running.
+class _EditEntryDialog extends StatefulWidget {
+  const _EditEntryDialog({required this.initialText, required this.strings});
+
+  final String initialText;
+  final AppStrings strings;
+
+  @override
+  State<_EditEntryDialog> createState() => _EditEntryDialogState();
+}
+
+class _EditEntryDialogState extends State<_EditEntryDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialText,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final text = _controller.text.trim();
+    if (text.isNotEmpty) {
+      Navigator.pop(context, text);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.strings.editEntry),
+      content: SizedBox(
+        width: 460,
+        child: TextField(
+          controller: _controller,
+          autofocus: true,
+          minLines: 2,
+          maxLines: 6,
+          onSubmitted: (_) => _save(),
+          decoration: InputDecoration(labelText: widget.strings.goodThingLabel),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(widget.strings.cancel),
+        ),
+        FilledButton(onPressed: _save, child: Text(widget.strings.save)),
+      ],
     );
   }
 }

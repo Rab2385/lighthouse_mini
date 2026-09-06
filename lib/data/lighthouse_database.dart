@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sembast/sembast.dart';
 
 import '../models/good_thing.dart';
@@ -5,7 +6,17 @@ import '../models/habit.dart';
 import 'database_open.dart';
 
 class LighthouseDatabase {
-  static const String _databaseName = 'lighthouse_mini.db';
+  LighthouseDatabase()
+    : _databaseFactory = null,
+      _databaseName = 'lighthouse_mini.db';
+
+  /// Test-only: run against an injected (e.g. in-memory) Sembast factory.
+  @visibleForTesting
+  LighthouseDatabase.withFactory(this._databaseFactory, this._databaseName);
+
+  final DatabaseFactory? _databaseFactory;
+
+  final String _databaseName;
 
   final StoreRef<String, Map<String, Object?>> _goodThingsStore =
       stringMapStoreFactory.store('good_things');
@@ -23,7 +34,9 @@ class LighthouseDatabase {
   Database? _database;
 
   Future<Database> get _db async {
-    return _database ??= await openLighthouseDatabase(_databaseName);
+    return _database ??= _databaseFactory != null
+        ? await _databaseFactory.openDatabase(_databaseName, version: 1)
+        : await openLighthouseDatabase(_databaseName);
   }
 
   Future<List<GoodThing>> loadGoodThings() async {

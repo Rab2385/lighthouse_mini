@@ -4,34 +4,69 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../pages/lighthouse_shell.dart';
 import '../state/lighthouse_controller.dart';
 
-class LighthouseApp extends StatelessWidget {
+class LighthouseApp extends StatefulWidget {
   const LighthouseApp({super.key, required this.controller});
 
   final LighthouseController controller;
 
+  @override
+  State<LighthouseApp> createState() => _LighthouseAppState();
+}
+
+class _LighthouseAppState extends State<LighthouseApp> {
   static const Color _petrol = Color(0xFF0B4F57);
+
+  late final ThemeData _lightTheme = _buildLightTheme();
+  late final ThemeData _darkTheme = _buildDarkTheme();
+
+  late bool _darkMode;
+  late Locale _locale;
+
+  @override
+  void initState() {
+    super.initState();
+    _darkMode = widget.controller.darkMode;
+    _locale = widget.controller.appLocale;
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  /// Rebuild `MaterialApp` only when something it actually consumes changes.
+  /// Every other data change is handled by the pages' own listeners, so the
+  /// root Navigator / Localizations are never torn down mid-interaction.
+  void _onControllerChanged() {
+    final darkMode = widget.controller.darkMode;
+    final locale = widget.controller.appLocale;
+
+    if (darkMode != _darkMode || locale != _locale) {
+      setState(() {
+        _darkMode = darkMode;
+        _locale = locale;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        return MaterialApp(
-          title: 'Lighthouse',
-          debugShowCheckedModeBanner: false,
-          theme: _buildLightTheme(),
-          darkTheme: _buildDarkTheme(),
-          themeMode: controller.darkMode ? ThemeMode.dark : ThemeMode.light,
-          locale: controller.appLocale,
-          supportedLocales: const [Locale('de'), Locale('en')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          home: LighthouseShell(controller: controller),
-        );
-      },
+    return MaterialApp(
+      title: 'Lighthouse',
+      debugShowCheckedModeBanner: false,
+      theme: _lightTheme,
+      darkTheme: _darkTheme,
+      themeMode: _darkMode ? ThemeMode.dark : ThemeMode.light,
+      locale: _locale,
+      supportedLocales: const [Locale('de'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: LighthouseShell(controller: widget.controller),
     );
   }
 
