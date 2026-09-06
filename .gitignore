@@ -50,3 +50,5 @@ app.*.map.json
 
 # Local logs
 *.log
+# Claude Code local settings
+.claude/
