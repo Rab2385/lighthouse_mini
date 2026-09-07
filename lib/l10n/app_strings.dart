@@ -106,6 +106,8 @@ class AppStrings {
   String get archivedHabits => _p('Archivierte Habits', 'Archived habits');
   String get noArchivedHabits =>
       _p('Keine archivierten Habits.', 'No archived habits.');
+  String habitArchived(String name) =>
+      _p('„$name" archiviert.', '“$name” archived.');
   String get deleteForever => _p('Endgültig löschen', 'Delete permanently');
   String get deleteForeverQ => _p('Endgültig löschen?', 'Delete permanently?');
   String deleteHabitMarkings(String name) => _p(

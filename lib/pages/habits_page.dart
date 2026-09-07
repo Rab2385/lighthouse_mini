@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../l10n/app_strings.dart';
 import '../models/habit.dart';
@@ -145,6 +146,27 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
       context,
       controller: widget.controller,
       habit: habit,
+    );
+  }
+
+  /// Archive a habit and offer a one-tap undo — archiving is reversible, so it
+  /// should never feel like a dead end.
+  void _archiveHabit(Habit habit) {
+    widget.controller.archiveHabit(habit.id);
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(_strings.habitArchived(habit.name)),
+        // Action snackbars persist by default in Flutter; auto-hide after 5s.
+        persist: false,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: _strings.undo,
+          onPressed: () => widget.controller.restoreHabit(habit.id),
+        ),
+      ),
     );
   }
 
@@ -342,6 +364,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                       today: today,
                       yesterday: yesterday,
                       onEdit: (habit) => _showHabitDialog(habit: habit),
+                      onArchive: _archiveHabit,
                     )
                   : _buildMonthTable(
                       habits: habits,
@@ -371,7 +394,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
 
         final nameWidth = narrow ? 150.0 : 200.0;
         final pinnedWidth = narrow ? 44.0 : 54.0;
-        final cellWidth = narrow ? 36.0 : 44.0;
+        final cellWidth = narrow ? 40.0 : 44.0;
         final totalWidth = narrow ? 56.0 : 86.0;
 
         _gridCellWidth = cellWidth;
@@ -403,6 +426,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                       today: today,
                       yesterday: yesterday,
                       onEdit: (habit) => _showHabitDialog(habit: habit),
+                      onArchive: _archiveHabit,
                     ),
                     Expanded(
                       child: SingleChildScrollView(
@@ -487,6 +511,7 @@ class _HabitCompactList extends StatelessWidget {
     required this.today,
     required this.yesterday,
     required this.onEdit,
+    required this.onArchive,
   });
 
   final List<Habit> habits;
@@ -494,6 +519,7 @@ class _HabitCompactList extends StatelessWidget {
   final DateTime today;
   final DateTime yesterday;
   final void Function(Habit habit) onEdit;
+  final void Function(Habit habit) onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -523,6 +549,7 @@ class _HabitCompactList extends StatelessWidget {
                     today: today,
                     yesterday: yesterday,
                     onEdit: () => onEdit(habits[i]),
+                    onArchive: () => onArchive(habits[i]),
                   ),
                 ],
               ],
@@ -541,6 +568,7 @@ class _HabitCompactRow extends StatelessWidget {
     required this.today,
     required this.yesterday,
     required this.onEdit,
+    required this.onArchive,
   });
 
   final Habit habit;
@@ -548,6 +576,7 @@ class _HabitCompactRow extends StatelessWidget {
   final DateTime today;
   final DateTime yesterday;
   final VoidCallback onEdit;
+  final VoidCallback onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -612,7 +641,7 @@ class _HabitCompactRow extends StatelessWidget {
             iconSize: 20,
             onSelected: (value) {
               if (value == 'edit') onEdit();
-              if (value == 'archive') controller.archiveHabit(habit.id);
+              if (value == 'archive') onArchive();
             },
             itemBuilder: (context) {
               return [
@@ -649,34 +678,42 @@ class _CompactToggle extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final completed = controller.isHabitCompleted(habitId: habitId, date: date);
 
+    // The whole column is the tap target (>= 48dp), not just the 26dp circle,
+    // so tapping the "Heute" label toggles the day too.
     return SizedBox(
       width: 54,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            caption,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: isToday
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 4),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(24),
-              onTap: () => controller.toggleHabit(habitId: habitId, date: date),
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: AnimatedContainer(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            controller.toggleHabit(habitId: habitId, date: date);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  caption,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isToday
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   width: 26,
                   height: 26,
@@ -691,17 +728,13 @@ class _CompactToggle extends StatelessWidget {
                     ),
                   ),
                   child: completed
-                      ? Icon(
-                          Icons.check,
-                          size: 16,
-                          color: colorScheme.onPrimary,
-                        )
+                      ? Icon(Icons.check, size: 16, color: colorScheme.onPrimary)
                       : null,
                 ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -719,6 +752,7 @@ class _FrozenHabitColumn extends StatelessWidget {
     required this.today,
     required this.yesterday,
     required this.onEdit,
+    required this.onArchive,
   });
 
   final List<Habit> habits;
@@ -729,6 +763,7 @@ class _FrozenHabitColumn extends StatelessWidget {
   final DateTime today;
   final DateTime yesterday;
   final void Function(Habit habit) onEdit;
+  final void Function(Habit habit) onArchive;
 
   Widget _dayHeader(
     BuildContext context, {
@@ -829,6 +864,7 @@ class _FrozenHabitColumn extends StatelessWidget {
                         habit: habit,
                         controller: controller,
                         onEdit: () => onEdit(habit),
+                        onArchive: () => onArchive(habit),
                       ),
                     ),
                     _PinnedCell(
@@ -894,11 +930,13 @@ class _HabitNameCell extends StatelessWidget {
     required this.habit,
     required this.controller,
     required this.onEdit,
+    required this.onArchive,
   });
 
   final Habit habit;
   final LighthouseController controller;
   final VoidCallback onEdit;
+  final VoidCallback onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -929,7 +967,7 @@ class _HabitNameCell extends StatelessWidget {
               }
 
               if (value == 'archive') {
-                controller.archiveHabit(habit.id);
+                onArchive();
               }
             },
             itemBuilder: (context) {
@@ -1159,6 +1197,7 @@ class _HabitDayCell extends StatelessWidget {
             onTap: disabled
                 ? null
                 : () {
+                    HapticFeedback.selectionClick();
                     controller.toggleHabit(habitId: habitId, date: date);
                   },
             child: Center(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
@@ -101,16 +102,47 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       return;
     }
 
-    final cardContext = _todayCardKey.currentContext;
-    if (cardContext == null) {
+    _settleOnToday(0);
+  }
+
+  /// The month is a lazy [ListView], so today's card often isn't built yet.
+  /// Jump close to it by estimate, let the next frame build it, then refine
+  /// with [Scrollable.ensureVisible]. Each retry reaches a little further down
+  /// in case days with entries made the list taller than the estimate.
+  void _settleOnToday(int attempt) {
+    if (!mounted ||
+        !_isViewingCurrentMonth ||
+        _searchQuery.trim().isNotEmpty ||
+        !_monthScrollController.hasClients) {
       return;
     }
 
-    Scrollable.ensureVisible(
-      cardContext,
-      alignment: 0.06,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
+    final cardContext = _todayCardKey.currentContext;
+    if (cardContext != null) {
+      Scrollable.ensureVisible(
+        cardContext,
+        alignment: 0.06,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
+
+    if (attempt >= 6) {
+      return;
+    }
+
+    const estimatedCardExtent = 145.0;
+    final todayDay = widget.controller.today.day;
+    final position = _monthScrollController.position;
+    final target = ((todayDay - 2 + attempt * 3) * estimatedCardExtent).clamp(
+      0.0,
+      position.maxScrollExtent,
+    );
+
+    _monthScrollController.jumpTo(target);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _settleOnToday(attempt + 1),
     );
   }
 
@@ -147,6 +179,10 @@ class _GoodThingsPageState extends State<GoodThingsPage>
     messenger.showSnackBar(
       SnackBar(
         content: Text(_strings.entryDeleted),
+        // Flutter defaults action snackbars to persist:true (never auto-hide);
+        // we want this one gone on its own after 5s.
+        persist: false,
+        duration: const Duration(seconds: 5),
         action: SnackBarAction(
           label: _strings.undo,
           onPressed: () {
@@ -218,15 +254,14 @@ class _GoodThingsPageState extends State<GoodThingsPage>
                       onEdit: _editEntry,
                       onDelete: _deleteEntry,
                     )
-                  : SingleChildScrollView(
+                  : ListView.builder(
                       controller: _monthScrollController,
                       padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                      child: Column(
-                        children: [
-                          for (var day = 1; day <= daysInMonth; day++)
-                            _buildDayCard(day),
-                        ],
-                      ),
+                      // Enough to keep today's card reachable by ensureVisible
+                      // after the estimate jump, without building the month.
+                      scrollCacheExtent: const ScrollCacheExtent.pixels(800),
+                      itemCount: daysInMonth,
+                      itemBuilder: (context, index) => _buildDayCard(index + 1),
                     ),
             ),
           ],
