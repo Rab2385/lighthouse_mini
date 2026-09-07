@@ -64,9 +64,13 @@ class _LighthouseShellState extends State<LighthouseShell> {
                 NavigationRail(
                   extended: extendedRail,
                   minExtendedWidth: 220,
+                  // Icons only when collapsed: keeps the rail narrow and, more
+                  // importantly, short enough to fit a landscape phone's height.
                   labelType: extendedRail
                       ? null
-                      : NavigationRailLabelType.all,
+                      : NavigationRailLabelType.none,
+                  // Belt-and-braces for very short heights / large text scale.
+                  scrollable: !extendedRail,
 
                   // Good Things, Habits and Review use indexes 0–2.
                   // Settings is opened through the separate bottom button.
@@ -85,8 +89,8 @@ class _LighthouseShellState extends State<LighthouseShell> {
                           child: _LighthouseLogo(),
                         )
                       : const Padding(
-                          padding: EdgeInsets.fromLTRB(8, 18, 8, 20),
-                          child: LighthouseMark(height: 28),
+                          padding: EdgeInsets.fromLTRB(8, 12, 8, 12),
+                          child: LighthouseMark(height: 26),
                         ),
 
                   destinations: [
@@ -223,8 +227,8 @@ class _SidebarSettingsButton extends StatelessWidget {
   final bool selected;
   final VoidCallback onPressed;
 
-  /// Matches the rail: a wide pill when extended, an icon-over-label
-  /// destination when the rail is collapsed (phone in landscape).
+  /// Matches the rail: a wide pill when extended, an icon-only destination
+  /// when the rail is collapsed (phone in landscape).
   final bool extended;
 
   @override
@@ -237,46 +241,38 @@ class _SidebarSettingsButton extends StatelessWidget {
 
     if (!extended) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(0, 4, 0, 14),
+        padding: const EdgeInsets.only(bottom: 12),
         child: Semantics(
           button: true,
           selected: selected,
           label: label,
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? colorScheme.primaryContainer
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      selected ? Icons.settings : Icons.settings_outlined,
-                      size: 24,
-                      color: foregroundColor,
-                    ),
+          child: Tooltip(
+            message: label,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: foregroundColor,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? colorScheme.primaryContainer
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ],
+                  child: Icon(
+                    selected ? Icons.settings : Icons.settings_outlined,
+                    size: 24,
+                    color: foregroundColor,
+                  ),
+                ),
               ),
             ),
           ),
