@@ -24,6 +24,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
   final GlobalKey _todayCardKey = GlobalKey();
 
   String _searchQuery = '';
+  bool _searchOpen = false;
 
   AppStrings get _strings => widget.controller.strings;
 
@@ -88,13 +89,31 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
     setState(() {
       _selectedMonth = DateTime(today.year, today.month);
-      if (_searchQuery.trim().isNotEmpty) {
+      if (_searchOpen || _searchQuery.trim().isNotEmpty) {
+        _searchOpen = false;
         _searchQuery = '';
         _searchController.clear();
       }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+  }
+
+  /// The search field is tucked away behind the header icon so it doesn't eat
+  /// a chunk of the viewport while you're just browsing months. Closing it
+  /// clears the query and drops you back on the month view.
+  void _toggleSearch() {
+    setState(() {
+      _searchOpen = !_searchOpen;
+      if (!_searchOpen) {
+        _searchController.clear();
+        _searchQuery = '';
+      }
+    });
+
+    if (!_searchOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+    }
   }
 
   void _scrollToToday() {
@@ -216,34 +235,52 @@ class _GoodThingsPageState extends State<GoodThingsPage>
               onPreviousMonth: _showPreviousMonth,
               onNextMonth: _canShowNextMonth ? _showNextMonth : null,
               onToday: _goToToday,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: _strings.searchGoodThings,
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.trim().isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: _strings.clearSearch,
-                          onPressed: () {
-                            _searchController.clear();
-
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
-                          icon: const Icon(Icons.close),
-                        ),
-                ),
+              trailing: IconButton.outlined(
+                visualDensity: VisualDensity.compact,
+                tooltip: _searchOpen
+                    ? _strings.clearSearch
+                    : _strings.searchGoodThings,
+                isSelected: _searchOpen,
+                onPressed: _toggleSearch,
+                icon: const Icon(Icons.search),
+                selectedIcon: const Icon(Icons.close),
               ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              alignment: Alignment.topCenter,
+              child: !_searchOpen
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                      child: TextField(
+                        controller: _searchController,
+                        autofocus: true,
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: _strings.searchGoodThings,
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchQuery.trim().isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: _strings.clearSearch,
+                                  onPressed: () {
+                                    _searchController.clear();
+
+                                    setState(() {
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                        ),
+                      ),
+                    ),
             ),
             Expanded(
               child: _searchQuery.trim().isNotEmpty

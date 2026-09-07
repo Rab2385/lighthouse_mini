@@ -40,12 +40,13 @@ class MonthHeader extends StatelessWidget {
       children: [
         if (showMonthControls) ...[
           IconButton.outlined(
+            visualDensity: VisualDensity.compact,
             tooltip: strings.previousMonth,
             onPressed: onPreviousMonth,
             icon: const Icon(Icons.chevron_left),
           ),
           SizedBox(
-            width: 150,
+            width: 128,
             child: Text(
               monthText,
               textAlign: TextAlign.center,
@@ -53,11 +54,17 @@ class MonthHeader extends StatelessWidget {
             ),
           ),
           IconButton.outlined(
+            visualDensity: VisualDensity.compact,
             tooltip: strings.nextMonth,
             onPressed: onNextMonth,
             icon: const Icon(Icons.chevron_right),
           ),
-          OutlinedButton(onPressed: onToday, child: Text(strings.today)),
+          IconButton.outlined(
+            visualDensity: VisualDensity.compact,
+            tooltip: strings.today,
+            onPressed: onToday,
+            icon: const Icon(Icons.today_outlined),
+          ),
         ],
         ?trailing,
       ],
