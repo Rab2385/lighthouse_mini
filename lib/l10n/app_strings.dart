@@ -103,9 +103,6 @@ class AppStrings {
   String get emojiCatMind => _p('Geist & Kreativität', 'Mind & creativity');
   String get emojiCatHome => _p('Zuhause', 'Home');
   String get emojiCatNature => _p('Natur', 'Nature');
-  String get description => _p('Beschreibung', 'Description');
-  String get habitDescriptionHint =>
-      _p('Was bedeutet die Markierung?', 'What does the mark mean?');
   String get archivedHabits => _p('Archivierte Habits', 'Archived habits');
   String get noArchivedHabits =>
       _p('Keine archivierten Habits.', 'No archived habits.');

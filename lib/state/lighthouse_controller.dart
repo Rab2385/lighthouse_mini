@@ -392,7 +392,6 @@ class LighthouseController extends ChangeNotifier {
   Future<void> addHabit({
     required String name,
     required String emoji,
-    required String description,
   }) async {
     final cleanName = name.trim();
 
@@ -404,7 +403,6 @@ class LighthouseController extends ChangeNotifier {
       id: _createId(),
       name: cleanName,
       emoji: emoji.trim().isEmpty ? '✓' : emoji.trim(),
-      description: description.trim(),
       isArchived: false,
       sortOrder: _habits.length,
       createdAt: DateTime.now(),
@@ -420,7 +418,6 @@ class LighthouseController extends ChangeNotifier {
     required String id,
     required String name,
     required String emoji,
-    required String description,
   }) async {
     final cleanName = name.trim();
 
@@ -437,7 +434,6 @@ class LighthouseController extends ChangeNotifier {
     final updated = _habits[index].copyWith(
       name: cleanName,
       emoji: emoji.trim().isEmpty ? '✓' : emoji.trim(),
-      description: description.trim(),
     );
 
     _habits[index] = updated;
@@ -554,7 +550,6 @@ class LighthouseController extends ChangeNotifier {
         id: 'work',
         name: 'Work',
         emoji: '💼',
-        description: 'Ich habe gearbeitet.',
         isArchived: false,
         sortOrder: 0,
         createdAt: now,
@@ -563,7 +558,6 @@ class LighthouseController extends ChangeNotifier {
         id: 'coffee',
         name: 'Coffee',
         emoji: '☕',
-        description: 'Ich habe Kaffee getrunken.',
         isArchived: false,
         sortOrder: 1,
         createdAt: now,
@@ -572,7 +566,6 @@ class LighthouseController extends ChangeNotifier {
         id: 'water',
         name: 'Water',
         emoji: '💧',
-        description: 'Ich habe genug Wasser getrunken.',
         isArchived: false,
         sortOrder: 2,
         createdAt: now,
@@ -581,7 +574,6 @@ class LighthouseController extends ChangeNotifier {
         id: 'coding',
         name: 'Coding',
         emoji: '💻',
-        description: 'Ich habe programmiert.',
         isArchived: false,
         sortOrder: 3,
         createdAt: now,
@@ -590,7 +582,6 @@ class LighthouseController extends ChangeNotifier {
         id: 'sport',
         name: 'Sport',
         emoji: '🏃',
-        description: 'Ich habe Sport gemacht.',
         isArchived: false,
         sortOrder: 4,
         createdAt: now,
@@ -599,7 +590,6 @@ class LighthouseController extends ChangeNotifier {
         id: 'alcohol',
         name: 'Alkohol',
         emoji: '🍷',
-        description: 'Ich habe Alkohol getrunken.',
         isArchived: false,
         sortOrder: 5,
         createdAt: now,

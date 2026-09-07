@@ -185,9 +185,6 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                         style: const TextStyle(fontSize: 23),
                       ),
                       title: Text(habit.name),
-                      subtitle: habit.description.isEmpty
-                          ? null
-                          : Text(habit.description),
                       trailing: Wrap(
                         spacing: 4,
                         children: [
@@ -582,9 +579,7 @@ class _HabitCompactRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  habit.description.isEmpty
-                      ? strings.nThisMonth(monthTotal)
-                      : habit.description,
+                  strings.nThisMonth(monthTotal),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -915,9 +910,7 @@ class _HabitNameCell extends StatelessWidget {
           const SizedBox(width: 9),
           Expanded(
             child: Tooltip(
-              message: habit.description.isEmpty
-                  ? habit.name
-                  : habit.description,
+              message: habit.name,
               child: Text(
                 habit.name,
                 overflow: TextOverflow.ellipsis,

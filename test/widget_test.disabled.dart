@@ -29,7 +29,6 @@ void main() {
       id: 'h-1',
       name: 'Reading',
       emoji: '📖',
-      description: '30 minutes',
       isArchived: false,
       sortOrder: 2,
       createdAt: DateTime(2026, 1, 1),
@@ -40,7 +39,6 @@ void main() {
     expect(restored.id, original.id);
     expect(restored.name, original.name);
     expect(restored.emoji, original.emoji);
-    expect(restored.description, original.description);
     expect(restored.isArchived, original.isArchived);
     expect(restored.sortOrder, original.sortOrder);
     expect(restored.createdAt, original.createdAt);
@@ -54,7 +52,6 @@ void main() {
     });
 
     expect(restored.emoji, '✓');
-    expect(restored.description, '');
     expect(restored.isArchived, false);
     expect(restored.sortOrder, 0);
   });

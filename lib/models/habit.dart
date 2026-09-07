@@ -3,7 +3,6 @@ class Habit {
     required this.id,
     required this.name,
     required this.emoji,
-    required this.description,
     required this.isArchived,
     required this.sortOrder,
     required this.createdAt,
@@ -12,7 +11,6 @@ class Habit {
   final String id;
   final String name;
   final String emoji;
-  final String description;
   final bool isArchived;
   final int sortOrder;
   final DateTime createdAt;
@@ -21,7 +19,6 @@ class Habit {
     String? id,
     String? name,
     String? emoji,
-    String? description,
     bool? isArchived,
     int? sortOrder,
     DateTime? createdAt,
@@ -30,7 +27,6 @@ class Habit {
       id: id ?? this.id,
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
-      description: description ?? this.description,
       isArchived: isArchived ?? this.isArchived,
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
@@ -42,7 +38,6 @@ class Habit {
       'id': id,
       'name': name,
       'emoji': emoji,
-      'description': description,
       'isArchived': isArchived,
       'sortOrder': sortOrder,
       'createdAt': createdAt.toIso8601String(),
@@ -54,7 +49,6 @@ class Habit {
       id: map['id']! as String,
       name: map['name']! as String,
       emoji: map['emoji'] as String? ?? '✓',
-      description: map['description'] as String? ?? '',
       isArchived: map['isArchived'] as bool? ?? false,
       sortOrder: map['sortOrder'] as int? ?? 0,
       createdAt: DateTime.parse(map['createdAt']! as String),

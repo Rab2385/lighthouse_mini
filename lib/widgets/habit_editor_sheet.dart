@@ -352,9 +352,9 @@ String _categoryLabel(AppStrings strings, String cat) {
 }
 
 /// The bottom sheet used to create or edit a habit: name, a searchable curated
-/// symbol grid, an optional description, and a single wide save button. It goes
-/// full height on a phone and stays a centred panel on wider screens, so it
-/// never overflows the way the old cramped dialog did.
+/// symbol grid, and a single wide save button. It goes full height on a phone
+/// and stays a centred panel on wider screens, so it never overflows the way
+/// the old cramped dialog did.
 class HabitEditorSheet extends StatefulWidget {
   const HabitEditorSheet({super.key, required this.controller, this.habit});
 
@@ -381,7 +381,6 @@ class HabitEditorSheet extends StatefulWidget {
 
 class _HabitEditorSheetState extends State<HabitEditorSheet> {
   late final TextEditingController _nameController;
-  late final TextEditingController _descriptionController;
   final TextEditingController _searchController = TextEditingController();
 
   String _emoji = '';
@@ -397,9 +396,6 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.habit?.name ?? '');
-    _descriptionController = TextEditingController(
-      text: widget.habit?.description ?? '',
-    );
 
     final existing = widget.habit?.emoji ?? '';
     if (existing.isNotEmpty && existing != '✓') {
@@ -414,7 +410,6 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
   void dispose() {
     _nameController.removeListener(_onNameChanged);
     _nameController.dispose();
-    _descriptionController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -452,13 +447,11 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
         id: widget.habit!.id,
         name: _nameController.text,
         emoji: _emoji,
-        description: _descriptionController.text,
       );
     } else {
       await controller.addHabit(
         name: _nameController.text,
         emoji: _emoji,
-        description: _descriptionController.text,
       );
     }
 
@@ -559,17 +552,6 @@ class _HabitEditorSheetState extends State<HabitEditorSheet> {
                       grouped: _search.trim().isEmpty,
                       strings: strings,
                       onPick: _pickEmoji,
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _descriptionController,
-                      minLines: 2,
-                      maxLines: 3,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        labelText: strings.description,
-                        hintText: strings.habitDescriptionHint,
-                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
