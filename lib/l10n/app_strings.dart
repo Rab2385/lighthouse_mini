@@ -130,14 +130,13 @@ class AppStrings {
     'Noch keine wiederkehrenden Texte in diesem Zeitraum.',
     'No recurring texts in this period yet.',
   );
-  String get thisMonth => _p('Dieser Monat', 'This month');
-  String get last7Days => _p('Letzte 7 Tage', 'Last 7 days');
-  String get last30Days => _p('Letzte 30 Tage', 'Last 30 days');
-  String get thisYear => _p('Dieses Jahr', 'This year');
+  String get rangeThisMonth => _p('Monat', 'Month');
+  String rangeLastDays(int n) => _p('$n Tage', '$n days');
   String get pickRange => _p('Zeitraum wählen', 'Choose range');
-  String pickedRange(String label) => _p('Zeitraum: $label', 'Range: $label');
   String rangeDays(int n) =>
       _en ? (n == 1 ? '$n day' : '$n days') : (n == 1 ? '$n Tag' : '$n Tage');
+  String daysElapsedOfRange(int elapsed, int total) =>
+      _p('$elapsed von $total Tagen', '$elapsed of $total days');
 
   // ---- Settings ------------------------------------------------------
   String get settingsSubtitle => _p(

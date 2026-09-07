@@ -162,6 +162,8 @@ class _ReviewPageState extends State<ReviewPage> {
               strings: strings,
               rangeLabel: _formatRange(_range),
               rangeDays: totalRangeDays,
+              elapsedDays: habitDays,
+              year: today.year,
               preset: _preset,
               onPresetSelected: _applyPreset,
             ),
@@ -257,6 +259,8 @@ class _ReviewHeader extends StatelessWidget {
     required this.strings,
     required this.rangeLabel,
     required this.rangeDays,
+    required this.elapsedDays,
+    required this.year,
     required this.preset,
     required this.onPresetSelected,
   });
@@ -264,15 +268,27 @@ class _ReviewHeader extends StatelessWidget {
   final AppStrings strings;
   final String rangeLabel;
   final int rangeDays;
+
+  /// Days of the range that have already happened. Below [rangeDays] whenever
+  /// the range runs past today (e.g. the current month), and that's the number
+  /// the habit bars are scored against — so the subtitle spells both out.
+  final int elapsedDays;
+  final int year;
   final _RangePreset preset;
   final ValueChanged<_RangePreset> onPresetSelected;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final custom = preset == _RangePreset.custom;
+
+    final daysText = elapsedDays >= rangeDays
+        ? strings.rangeDays(rangeDays)
+        : strings.daysElapsedOfRange(elapsedDays, rangeDays);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -284,49 +300,64 @@ class _ReviewHeader extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '$rangeLabel · ${strings.rangeDays(rangeDays)}',
-            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+            '$rangeLabel · $daysText',
+            style: TextStyle(color: colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
-              _PresetChip(
-                label: strings.thisMonth,
-                selected: preset == _RangePreset.thisMonth,
-                onSelected: () => onPresetSelected(_RangePreset.thisMonth),
-              ),
-              _PresetChip(
-                label: strings.last7Days,
-                selected: preset == _RangePreset.last7Days,
-                onSelected: () => onPresetSelected(_RangePreset.last7Days),
-              ),
-              _PresetChip(
-                label: strings.last30Days,
-                selected: preset == _RangePreset.last30Days,
-                onSelected: () => onPresetSelected(_RangePreset.last30Days),
-              ),
-              _PresetChip(
-                label: strings.thisYear,
-                selected: preset == _RangePreset.thisYear,
-                onSelected: () => onPresetSelected(_RangePreset.thisYear),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => onPresetSelected(_RangePreset.custom),
-                icon: const Icon(Icons.date_range_outlined, size: 18),
-                label: Text(
-                  preset == _RangePreset.custom
-                      ? strings.pickedRange(rangeLabel)
-                      : strings.pickRange,
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const ClampingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _PresetChip(
+                        label: strings.rangeThisMonth,
+                        selected: preset == _RangePreset.thisMonth,
+                        onSelected: () =>
+                            onPresetSelected(_RangePreset.thisMonth),
+                      ),
+                      const SizedBox(width: 8),
+                      _PresetChip(
+                        label: strings.rangeLastDays(7),
+                        selected: preset == _RangePreset.last7Days,
+                        onSelected: () =>
+                            onPresetSelected(_RangePreset.last7Days),
+                      ),
+                      const SizedBox(width: 8),
+                      _PresetChip(
+                        label: strings.rangeLastDays(30),
+                        selected: preset == _RangePreset.last30Days,
+                        onSelected: () =>
+                            onPresetSelected(_RangePreset.last30Days),
+                      ),
+                      const SizedBox(width: 8),
+                      _PresetChip(
+                        label: '$year',
+                        selected: preset == _RangePreset.thisYear,
+                        onSelected: () =>
+                            onPresetSelected(_RangePreset.thisYear),
+                      ),
+                    ],
+                  ),
                 ),
-                style: preset == _RangePreset.custom
-                    ? OutlinedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                        foregroundColor: theme.colorScheme.onSecondaryContainer,
-                      )
-                    : null,
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () => onPresetSelected(_RangePreset.custom),
+                isSelected: custom,
+                tooltip: strings.pickRange,
+                icon: const Icon(Icons.calendar_month_outlined),
+                selectedIcon: const Icon(Icons.calendar_month),
+                style: IconButton.styleFrom(
+                  backgroundColor: custom
+                      ? colorScheme.secondaryContainer
+                      : null,
+                  foregroundColor: custom
+                      ? colorScheme.onSecondaryContainer
+                      : colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -353,6 +384,11 @@ class _PresetChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onSelected(),
+      showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
     );
   }
 }
