@@ -51,13 +51,22 @@ class _LighthouseShellState extends State<LighthouseShell> {
       builder: (context, constraints) {
         final showSidebar = constraints.maxWidth >= 850;
 
+        // A phone that's wide enough for the rail (i.e. held in landscape) gets
+        // an icon-only rail, not the 220px extended one — landscape needs the
+        // width for the habit grid, and its height for the rows.
+        final isPhone = MediaQuery.sizeOf(context).shortestSide < 600;
+        final extendedRail = showSidebar && !isPhone;
+
         if (showSidebar) {
           return Scaffold(
             body: Row(
               children: [
                 NavigationRail(
-                  extended: true,
+                  extended: extendedRail,
                   minExtendedWidth: 220,
+                  labelType: extendedRail
+                      ? null
+                      : NavigationRailLabelType.all,
 
                   // Good Things, Habits and Review use indexes 0–2.
                   // Settings is opened through the separate bottom button.
@@ -70,10 +79,15 @@ class _LighthouseShellState extends State<LighthouseShell> {
                   trailingAtBottom: true,
                   groupAlignment: -1,
 
-                  leading: const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 22, 16, 26),
-                    child: _LighthouseLogo(),
-                  ),
+                  leading: extendedRail
+                      ? const Padding(
+                          padding: EdgeInsets.fromLTRB(16, 22, 16, 26),
+                          child: _LighthouseLogo(),
+                        )
+                      : const Padding(
+                          padding: EdgeInsets.fromLTRB(8, 18, 8, 20),
+                          child: LighthouseMark(height: 28),
+                        ),
 
                   destinations: [
                     NavigationRailDestination(
@@ -96,6 +110,7 @@ class _LighthouseShellState extends State<LighthouseShell> {
                   trailing: _SidebarSettingsButton(
                     label: strings.settings,
                     selected: _selectedIndex == 3,
+                    extended: extendedRail,
                     onPressed: () {
                       _selectPage(3);
                     },
@@ -201,23 +216,77 @@ class _SidebarSettingsButton extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onPressed,
+    this.extended = true,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onPressed;
 
+  /// Matches the rail: a wide pill when extended, an icon-over-label
+  /// destination when the rail is collapsed (phone in landscape).
+  final bool extended;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final backgroundColor = selected
-        ? colorScheme.primaryContainer
-        : Colors.transparent;
-
     final foregroundColor = selected
         ? colorScheme.onPrimaryContainer
         : colorScheme.onSurfaceVariant;
+
+    if (!extended) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(0, 4, 0, 14),
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: label,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? colorScheme.primaryContainer
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      selected ? Icons.settings : Icons.settings_outlined,
+                      size: 24,
+                      color: foregroundColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: foregroundColor,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final backgroundColor = selected
+        ? colorScheme.primaryContainer
+        : Colors.transparent;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 18),
