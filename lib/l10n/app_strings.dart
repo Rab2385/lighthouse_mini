@@ -256,4 +256,13 @@ class AppStrings {
 
   String monthAndYear(DateTime date) =>
       '${monthNames[date.month - 1]} ${date.year}';
+
+  /// "Sep. 2026" / "Sep 2026" — for very narrow phone headers.
+  String shortMonthAndYear(DateTime date) {
+    final name = monthNames[date.month - 1];
+    final short = name.length <= 4
+        ? name
+        : '${name.substring(0, 3)}${_en ? '' : '.'}';
+    return '$short ${date.year}';
+  }
 }
