@@ -6,7 +6,7 @@
     "background_color": "#0B4F57",
     "theme_color": "#0B4F57",
     "description": "Good Things und Habit Tracker – lokal und ruhig.",
-    "orientation": "portrait-primary",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

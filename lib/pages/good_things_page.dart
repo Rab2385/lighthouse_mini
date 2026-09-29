@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../state/lighthouse_controller.dart';
+import '../util/resume_policy.dart';
 import '../widgets/month_header.dart';
 
 class GoodThingsPage extends StatefulWidget {
@@ -25,6 +26,8 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
   String _searchQuery = '';
   bool _searchOpen = false;
+
+  final ResumePolicy _resumePolicy = ResumePolicy();
 
   AppStrings get _strings => widget.controller.strings;
 
@@ -49,8 +52,9 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // When the app comes back to the foreground, land on today again.
-    if (state == AppLifecycleState.resumed) {
+    // Back from the background after a while (or on a new day): land on
+    // today again. A quick glance at a notification keeps the view as is.
+    if (_resumePolicy.onStateChanged(state)) {
       _goToToday();
     }
   }
@@ -204,9 +208,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
         duration: const Duration(seconds: 5),
         action: SnackBarAction(
           label: _strings.undo,
-          onPressed: () {
-            widget.controller.addGoodThing(date: entry.date, text: entry.text);
-          },
+          onPressed: () => widget.controller.restoreGoodThing(entry),
         ),
       ),
     );
@@ -708,20 +710,30 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
       _isSaving = true;
     });
 
-    await widget.controller.addGoodThing(date: widget.date, text: text);
+    var saved = false;
 
-    _textController.clear();
-
-    if (!mounted) {
-      return;
+    try {
+      saved = await widget.controller.addGoodThing(
+        date: widget.date,
+        text: text,
+      );
+    } finally {
+      // Never leave the field stuck on the spinner. If the save failed the
+      // text stays put so nothing typed is lost; the shell shows the error.
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          if (saved) {
+            _textController.clear();
+            _query = '';
+          }
+        });
+      }
     }
 
-    setState(() {
-      _query = '';
-      _isSaving = false;
-    });
-
-    _focusNode.requestFocus();
+    if (mounted) {
+      _focusNode.requestFocus();
+    }
   }
 
   Future<void> _selectSuggestion(String suggestion) async {

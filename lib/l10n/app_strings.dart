@@ -36,6 +36,10 @@ class AppStrings {
   String get today => _p('Heute', 'Today');
   String get yesterday => _p('Gestern', 'Yesterday');
   String get undo => _p('Rückgängig', 'Undo');
+  String get saveFailed => _p(
+    'Konnte nicht gespeichert werden. Bitte erneut versuchen.',
+    "Couldn't save. Please try again.",
+  );
 
   // ---- Month header ------------------------------------------------------
   String get previousMonth => _p('Vorheriger Monat', 'Previous month');

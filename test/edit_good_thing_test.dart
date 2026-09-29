@@ -15,11 +15,16 @@ void main() {
         'edit_test.db',
       );
       final controller = LighthouseController(database);
-      await controller.initialize();
-      await controller.addGoodThing(
-        date: controller.today,
-        text: 'Original entry',
-      );
+
+      // Sembast does real async I/O, which never completes inside the
+      // FakeAsync zone testWidgets runs in — so do the setup in runAsync.
+      await tester.runAsync(() async {
+        await controller.initialize();
+        await controller.addGoodThing(
+          date: controller.today,
+          text: 'Original entry',
+        );
+      });
 
       await tester.pumpWidget(LighthouseApp(controller: controller));
       await tester.pumpAndSettle();

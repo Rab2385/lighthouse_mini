@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../state/lighthouse_controller.dart';
@@ -21,9 +23,25 @@ class _LighthouseShellState extends State<LighthouseShell> {
 
   late final List<Widget> _pages;
 
+  late final StreamSubscription<Object> _saveErrorSubscription;
+
   @override
   void initState() {
     super.initState();
+
+    // One place for storage failures, so every screen gets feedback without
+    // handling errors at each call site.
+    _saveErrorSubscription = widget.controller.saveErrors.listen((_) {
+      if (!mounted) {
+        return;
+      }
+
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      messenger?.hideCurrentSnackBar();
+      messenger?.showSnackBar(
+        SnackBar(content: Text(widget.controller.strings.saveFailed)),
+      );
+    });
 
     _pages = [
       GoodThingsPage(controller: widget.controller),
@@ -31,6 +49,12 @@ class _LighthouseShellState extends State<LighthouseShell> {
       ReviewPage(controller: widget.controller),
       SettingsPage(controller: widget.controller),
     ];
+  }
+
+  @override
+  void dispose() {
+    _saveErrorSubscription.cancel();
+    super.dispose();
   }
 
   void _selectPage(int index) {

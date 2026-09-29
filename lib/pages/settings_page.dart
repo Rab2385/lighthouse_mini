@@ -42,6 +42,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
     setState(() => _savingName = false);
 
+    // A failed save was rolled back and already reported by the shell.
+    if (widget.controller.userName != _nameController.text.trim()) {
+      return;
+    }
+
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(_strings.nameSaved)));
@@ -74,12 +79,13 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    await widget.controller.clearAllData();
-    _nameController.clear();
+    final cleared = await widget.controller.clearAllData();
 
-    if (!mounted) {
+    if (!cleared || !mounted) {
       return;
     }
+
+    _nameController.clear();
 
     ScaffoldMessenger.of(
       context,
