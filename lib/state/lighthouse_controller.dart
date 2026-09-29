@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -13,7 +14,18 @@ import '../util/greeting.dart';
 class LighthouseController extends ChangeNotifier {
   LighthouseController(this._database);
 
+  /// Settings key marking that the starter habits were created once, so an
+  /// intentionally empty habit list stays empty on the next launch.
+  static const String _defaultHabitsSeededKey = 'defaultHabitsSeeded';
+
   final LighthouseDatabase _database;
+
+  final StreamController<Object> _saveErrors =
+      StreamController<Object>.broadcast();
+
+  /// Emits whenever a change could not be written to local storage. The
+  /// in-memory change has already been rolled back by then.
+  Stream<Object> get saveErrors => _saveErrors.stream;
 
   final List<GoodThing> _goodThings = [];
   final List<Habit> _habits = [];
@@ -114,11 +126,28 @@ class LighthouseController extends ChangeNotifier {
         ? storedLanguage!
         : 'de';
 
-    if (_habits.isEmpty) {
-      await _createDefaultHabits();
+    final defaultsSeeded = settings[_defaultHabitsSeededKey] as bool? ?? false;
+
+    if (!defaultsSeeded) {
+      // Installs from before the flag existed: any stored data means this is
+      // not a first launch, so an empty habit list was the user's choice.
+      final isFirstLaunch =
+          _habits.isEmpty && _goodThings.isEmpty && _completedHabitKeys.isEmpty;
+
+      if (isFirstLaunch) {
+        await _createDefaultHabits();
+      } else {
+        await _database.saveSetting(_defaultHabitsSeededKey, true);
+      }
     }
 
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _saveErrors.close();
+    super.dispose();
   }
 
   bool canAddGoodThingForDate(DateTime date) {
@@ -272,14 +301,14 @@ class LighthouseController extends ChangeNotifier {
     return candidates.take(limit).map((suggestion) => suggestion.text).toList();
   }
 
-  Future<void> addGoodThing({
+  Future<bool> addGoodThing({
     required DateTime date,
     required String text,
   }) async {
     final cleanText = text.trim();
 
     if (cleanText.isEmpty || !canAddGoodThingForDate(date)) {
-      return;
+      return false;
     }
 
     final now = DateTime.now();
@@ -295,26 +324,46 @@ class LighthouseController extends ChangeNotifier {
     _goodThings.add(entry);
     notifyListeners();
 
-    await _database.saveGoodThing(entry);
+    return _persist(
+      () => _database.saveGoodThing(entry),
+      rollback: () => _goodThings.removeWhere((e) => e.id == entry.id),
+    );
   }
 
-  Future<void> updateGoodThing({
+  /// Puts a deleted entry back exactly as it was — same id and timestamps,
+  /// so it returns to its old place in the day. Used by "Undo".
+  Future<bool> restoreGoodThing(GoodThing entry) async {
+    if (_goodThings.any((existing) => existing.id == entry.id)) {
+      return false;
+    }
+
+    _goodThings.add(entry);
+    notifyListeners();
+
+    return _persist(
+      () => _database.saveGoodThing(entry),
+      rollback: () => _goodThings.removeWhere((e) => e.id == entry.id),
+    );
+  }
+
+  Future<bool> updateGoodThing({
     required String id,
     required String text,
   }) async {
     final cleanText = text.trim();
 
     if (cleanText.isEmpty) {
-      return;
+      return false;
     }
 
     final index = _goodThings.indexWhere((entry) => entry.id == id);
 
     if (index == -1) {
-      return;
+      return false;
     }
 
-    final updated = _goodThings[index].copyWith(
+    final previous = _goodThings[index];
+    final updated = previous.copyWith(
       text: cleanText,
       updatedAt: DateTime.now(),
     );
@@ -322,28 +371,40 @@ class LighthouseController extends ChangeNotifier {
     _goodThings[index] = updated;
     notifyListeners();
 
-    await _database.saveGoodThing(updated);
+    return _persist(
+      () => _database.saveGoodThing(updated),
+      rollback: () => _replaceWhere(_goodThings, (e) => e.id == id, previous),
+    );
   }
 
-  Future<void> deleteGoodThing(String id) async {
+  Future<bool> deleteGoodThing(String id) async {
+    final removed = _goodThings.where((entry) => entry.id == id).toList();
+
+    if (removed.isEmpty) {
+      return false;
+    }
+
     _goodThings.removeWhere((entry) => entry.id == id);
     notifyListeners();
 
-    await _database.deleteGoodThing(id);
+    return _persist(
+      () => _database.deleteGoodThing(id),
+      rollback: () => _goodThings.addAll(removed),
+    );
   }
 
   bool isHabitCompleted({required String habitId, required DateTime date}) {
     return _completedHabitKeys.contains(_habitCompletionKey(habitId, date));
   }
 
-  Future<void> toggleHabit({
+  Future<bool> toggleHabit({
     required String habitId,
     required DateTime date,
   }) async {
     final cleanDate = _dateOnly(date);
 
     if (cleanDate.isAfter(today)) {
-      return;
+      return false;
     }
 
     final key = _habitCompletionKey(habitId, cleanDate);
@@ -358,11 +419,16 @@ class LighthouseController extends ChangeNotifier {
 
     notifyListeners();
 
-    await _database.setHabitCompleted(
-      key: key,
-      habitId: habitId,
-      date: _dateKey(cleanDate),
-      completed: willBeCompleted,
+    return _persist(
+      () => _database.setHabitCompleted(
+        key: key,
+        habitId: habitId,
+        date: _dateKey(cleanDate),
+        completed: willBeCompleted,
+      ),
+      rollback: () => willBeCompleted
+          ? _completedHabitKeys.remove(key)
+          : _completedHabitKeys.add(key),
     );
   }
 
@@ -389,14 +455,11 @@ class LighthouseController extends ChangeNotifier {
     return total;
   }
 
-  Future<void> addHabit({
-    required String name,
-    required String emoji,
-  }) async {
+  Future<bool> addHabit({required String name, required String emoji}) async {
     final cleanName = name.trim();
 
     if (cleanName.isEmpty) {
-      return;
+      return false;
     }
 
     final habit = Habit(
@@ -411,10 +474,13 @@ class LighthouseController extends ChangeNotifier {
     _habits.add(habit);
     notifyListeners();
 
-    await _database.saveHabit(habit);
+    return _persist(
+      () => _database.saveHabit(habit),
+      rollback: () => _habits.removeWhere((h) => h.id == habit.id),
+    );
   }
 
-  Future<void> updateHabit({
+  Future<bool> updateHabit({
     required String id,
     required String name,
     required String emoji,
@@ -422,113 +488,115 @@ class LighthouseController extends ChangeNotifier {
     final cleanName = name.trim();
 
     if (cleanName.isEmpty) {
-      return;
+      return false;
     }
 
-    final index = _habits.indexWhere((habit) => habit.id == id);
-
-    if (index == -1) {
-      return;
-    }
-
-    final updated = _habits[index].copyWith(
-      name: cleanName,
-      emoji: emoji.trim().isEmpty ? '✓' : emoji.trim(),
+    return _replaceHabit(
+      id,
+      (habit) => habit.copyWith(
+        name: cleanName,
+        emoji: emoji.trim().isEmpty ? '✓' : emoji.trim(),
+      ),
     );
-
-    _habits[index] = updated;
-    notifyListeners();
-
-    await _database.saveHabit(updated);
   }
 
-  Future<void> archiveHabit(String id) async {
-    final index = _habits.indexWhere((habit) => habit.id == id);
-
-    if (index == -1) {
-      return;
-    }
-
-    final updated = _habits[index].copyWith(isArchived: true);
-
-    _habits[index] = updated;
-    notifyListeners();
-
-    await _database.saveHabit(updated);
+  Future<bool> archiveHabit(String id) {
+    return _replaceHabit(id, (habit) => habit.copyWith(isArchived: true));
   }
 
-  Future<void> restoreHabit(String id) async {
-    final index = _habits.indexWhere((habit) => habit.id == id);
-
-    if (index == -1) {
-      return;
-    }
-
-    final updated = _habits[index].copyWith(isArchived: false);
-
-    _habits[index] = updated;
-    notifyListeners();
-
-    await _database.saveHabit(updated);
+  Future<bool> restoreHabit(String id) {
+    return _replaceHabit(id, (habit) => habit.copyWith(isArchived: false));
   }
 
-  Future<void> permanentlyDeleteHabit(String id) async {
+  Future<bool> permanentlyDeleteHabit(String id) async {
+    final removedHabits = _habits.where((habit) => habit.id == id).toList();
+    final removedKeys = _completedHabitKeys
+        .where((key) => key.startsWith('$id|'))
+        .toList();
+
     _habits.removeWhere((habit) => habit.id == id);
-    _completedHabitKeys.removeWhere((key) => key.startsWith('$id|'));
+    _completedHabitKeys.removeAll(removedKeys);
 
     notifyListeners();
 
-    await _database.deleteHabit(id);
+    return _persist(
+      () => _database.deleteHabit(id),
+      rollback: () {
+        _habits.addAll(removedHabits);
+        _completedHabitKeys.addAll(removedKeys);
+      },
+    );
   }
 
-  Future<void> setDarkMode(bool value) async {
+  Future<bool> setDarkMode(bool value) async {
     if (_darkMode == value) {
-      return;
+      return false;
     }
 
+    final previous = _darkMode;
     _darkMode = value;
     notifyListeners();
 
-    await _database.saveSetting('darkMode', value);
+    return _persist(
+      () => _database.saveSetting('darkMode', value),
+      rollback: () => _darkMode = previous,
+    );
   }
 
-  Future<void> setHabitCompactView(bool value) async {
+  Future<bool> setHabitCompactView(bool value) async {
     if (_habitCompactView == value) {
-      return;
+      return false;
     }
 
+    final previous = _habitCompactView;
     _habitCompactView = value;
     notifyListeners();
 
-    await _database.saveSetting('habitCompactView', value);
+    return _persist(
+      () => _database.saveSetting('habitCompactView', value),
+      rollback: () => _habitCompactView = previous,
+    );
   }
 
-  Future<void> setLanguage(String code) async {
+  Future<bool> setLanguage(String code) async {
     if (_languageCode == code || !AppStrings.supportedCodes.contains(code)) {
-      return;
+      return false;
     }
 
+    final previous = _languageCode;
     _languageCode = code;
     notifyListeners();
 
-    await _database.saveSetting('language', code);
+    return _persist(
+      () => _database.saveSetting('language', code),
+      rollback: () => _languageCode = previous,
+    );
   }
 
-  Future<void> setUserName(String value) async {
+  Future<bool> setUserName(String value) async {
     final cleanValue = value.trim();
 
     if (_userName == cleanValue) {
-      return;
+      return false;
     }
 
+    final previous = _userName;
     _userName = cleanValue;
     notifyListeners();
 
-    await _database.saveSetting('userName', cleanValue);
+    return _persist(
+      () => _database.saveSetting('userName', cleanValue),
+      rollback: () => _userName = previous,
+    );
   }
 
-  Future<void> clearAllData() async {
-    await _database.clearAllData();
+  Future<bool> clearAllData() async {
+    try {
+      await _database.clearAllData();
+    } catch (error, stackTrace) {
+      _reportSaveError(error, stackTrace);
+      return false;
+    }
 
     _goodThings.clear();
     _habits.clear();
@@ -540,6 +608,64 @@ class LighthouseController extends ChangeNotifier {
 
     await _createDefaultHabits();
     notifyListeners();
+    return true;
+  }
+
+  /// Runs a storage [write] for a change that is already applied in memory.
+  /// If the write fails, [rollback] undoes the in-memory change so the screen
+  /// never shows something that isn't actually saved, and [saveErrors] fires.
+  Future<bool> _persist(
+    Future<void> Function() write, {
+    required VoidCallback rollback,
+  }) async {
+    try {
+      await write();
+      return true;
+    } catch (error, stackTrace) {
+      rollback();
+      notifyListeners();
+      _reportSaveError(error, stackTrace);
+      return false;
+    }
+  }
+
+  void _reportSaveError(Object error, StackTrace stackTrace) {
+    debugPrint('Lighthouse could not save: $error\n$stackTrace');
+
+    if (!_saveErrors.isClosed) {
+      _saveErrors.add(error);
+    }
+  }
+
+  Future<bool> _replaceHabit(String id, Habit Function(Habit) change) async {
+    final index = _habits.indexWhere((habit) => habit.id == id);
+
+    if (index == -1) {
+      return false;
+    }
+
+    final previous = _habits[index];
+    final updated = change(previous);
+
+    _habits[index] = updated;
+    notifyListeners();
+
+    return _persist(
+      () => _database.saveHabit(updated),
+      rollback: () => _replaceWhere(_habits, (h) => h.id == id, previous),
+    );
+  }
+
+  static void _replaceWhere<T>(
+    List<T> list,
+    bool Function(T) test,
+    T replacement,
+  ) {
+    final index = list.indexWhere(test);
+
+    if (index != -1) {
+      list[index] = replacement;
+    }
   }
 
   Future<void> _createDefaultHabits() async {
@@ -601,6 +727,8 @@ class LighthouseController extends ChangeNotifier {
     for (final habit in defaults) {
       await _database.saveHabit(habit);
     }
+
+    await _database.saveSetting(_defaultHabitsSeededKey, true);
   }
 
   String _createId() {

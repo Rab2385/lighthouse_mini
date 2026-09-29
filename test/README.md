@@ -1,19 +1,30 @@
-# Tests — temporarily deactivated
+# Tests
 
-The test files here end in `.disabled.dart` so `flutter test` does **not**
-pick them up (the runner only discovers `*_test.dart`). They still compile
-and are checked by `flutter analyze`.
-
-Deactivated because `flutter test` on the current dev machine spends 1–2
-minutes compiling the test bundle before running, which made routine
-verification too slow. Nothing in the app depends on them.
-
-## Reactivate
+Run everything with:
 
 ```bash
-git mv test/widget_test.disabled.dart            test/widget_test.dart
-git mv test/edit_good_thing_test.disabled.dart   test/edit_good_thing_test.dart
+flutter test
 ```
+
+The whole suite finishes in a few seconds. CI (`.github/workflows/ci.yml`)
+runs `flutter analyze` and `flutter test` on every push and pull request.
+
+## Touching the database in a widget test
+
+`testWidgets` runs its body inside a `FakeAsync` zone. Sembast (even the
+in-memory factory) does real asynchronous I/O, which **never completes** there,
+so the test simply hangs until the 10-minute timeout. Do all database setup
+inside `tester.runAsync`:
+
+```dart
+await tester.runAsync(() async {
+  await controller.initialize();
+  await controller.addGoodThing(date: controller.today, text: 'Entry');
+});
+```
+
+Plain `test(...)` cases (like `controller_test`) run on the real event loop
+and don't need this.
 
 ## What they cover
 
@@ -21,8 +32,8 @@ git mv test/edit_good_thing_test.disabled.dart   test/edit_good_thing_test.dart
 |---|---|
 | `widget_test` | `GoodThing` / `Habit` map round-trips; `greetingForTime` — time buckets, name trimming, both languages |
 | `edit_good_thing_test` | drives add → edit dialog → save against an in-memory database; regression guard for the `_dependents.isEmpty` crash |
+| `controller_test` | default habits are only seeded once; Undo restores the original entry; failed saves roll back and are reported |
+| `resume_policy_test` | when coming back to the app jumps to today (new day / 10+ min away) and when it doesn't |
 
-`edit_good_thing_test` relies on `LighthouseDatabase.withFactory(...)` (a
-`@visibleForTesting` constructor) and `databaseFactoryMemory` from the
-`sembast` package — both already in place, no pubspec changes needed to
-turn the tests back on.
+Database tests use `LighthouseDatabase.withFactory(databaseFactoryMemory, name)`
+— give each test its own `name`, since memory databases are shared by name.

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../l10n/app_strings.dart';
 import '../models/habit.dart';
 import '../state/lighthouse_controller.dart';
+import '../util/resume_policy.dart';
 import '../widgets/habit_editor_sheet.dart';
 import '../widgets/month_header.dart';
 
@@ -27,6 +28,8 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
   double _gridCellWidth = 44;
   Orientation? _lastOrientation;
 
+  final ResumePolicy _resumePolicy = ResumePolicy();
+
   AppStrings get _strings => widget.controller.strings;
 
   @override
@@ -44,8 +47,9 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // On a phone the orientation, not the saved preference, chooses the view.
-    // When it flips (and the month grid is now on screen) re-centre on today.
+    // Turning a phone sideways switches to the month grid. When the
+    // orientation flips (and the grid may now be on screen) re-centre on
+    // today.
     final orientation = MediaQuery.orientationOf(context);
     if (_lastOrientation != null && orientation != _lastOrientation) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -64,8 +68,9 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // When the app comes back to the foreground, land on today again.
-    if (state == AppLifecycleState.resumed) {
+    // Back from the background after a while (or on a new day): land on
+    // today again. A quick glance at a notification keeps the view as is.
+    if (_resumePolicy.onStateChanged(state)) {
       _goToToday();
     }
   }
@@ -302,12 +307,11 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
         final habits = widget.controller.activeHabits;
         final strings = _strings;
 
-        // On a phone: portrait shows the compact list, landscape shows the
-        // month grid — it follows how the phone is held. Elsewhere the
-        // Kompakt / Monat toggle in Settings-style header decides.
-        final compact = isPhone
-            ? !isLandscape
-            : widget.controller.habitCompactView;
+        // A phone held sideways always gets the month grid. Everywhere else
+        // — including a phone in portrait, which may be rotation-locked —
+        // the Kompakt / Monat toggle decides.
+        final forceGrid = isPhone && isLandscape;
+        final compact = !forceGrid && widget.controller.habitCompactView;
 
         return Column(
           children: [
@@ -324,12 +328,12 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  // The manual toggle only makes sense where orientation
-                  // isn't already choosing the view.
-                  if (!isPhone)
+                  // Hidden only where orientation already chose the grid.
+                  if (!forceGrid)
                     _HabitViewToggle(
                       strings: strings,
                       compact: compact,
+                      iconsOnly: isPhone,
                       onChanged: (value) {
                         widget.controller.setHabitCompactView(value);
                         if (!value) {
@@ -339,11 +343,19 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                         }
                       },
                     ),
-                  OutlinedButton.icon(
-                    onPressed: _showArchivedHabits,
-                    icon: const Icon(Icons.archive_outlined),
-                    label: Text(strings.archiveButton),
-                  ),
+                  // Icon-only on a phone so the header stays one row high.
+                  if (isPhone)
+                    IconButton.outlined(
+                      tooltip: strings.archiveButton,
+                      onPressed: _showArchivedHabits,
+                      icon: const Icon(Icons.archive_outlined),
+                    )
+                  else
+                    OutlinedButton.icon(
+                      onPressed: _showArchivedHabits,
+                      icon: const Icon(Icons.archive_outlined),
+                      label: Text(strings.archiveButton),
+                    ),
                   FilledButton.icon(
                     onPressed: () {
                       _showHabitDialog();
@@ -392,17 +404,23 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
         final colorScheme = Theme.of(context).colorScheme;
         final narrow = constraints.maxWidth < 560;
 
-        final nameWidth = narrow ? 150.0 : 200.0;
+        // Phone portrait: the pinned Gestern / Heute columns would leave room
+        // for about one day, and they repeat the last two columns anyway —
+        // drop them and slim everything so ~5 days are visible.
+        final portraitPhone = constraints.maxWidth < 440;
+
+        final sidePadding = portraitPhone ? 12.0 : 24.0;
+        final nameWidth = portraitPhone ? 104.0 : (narrow ? 150.0 : 200.0);
         final pinnedWidth = narrow ? 44.0 : 54.0;
         final cellWidth = narrow ? 40.0 : 44.0;
-        final totalWidth = narrow ? 56.0 : 86.0;
+        final totalWidth = portraitPhone ? 48.0 : (narrow ? 56.0 : 86.0);
 
         _gridCellWidth = cellWidth;
 
         final bodyHeight = _kHeaderHeight + habits.length * _kRowHeight;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+          padding: EdgeInsets.fromLTRB(sidePadding, 0, sidePadding, 40),
           child: Container(
             decoration: BoxDecoration(
               color: colorScheme.surface,
@@ -422,6 +440,8 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                       controller: widget.controller,
                       nameWidth: nameWidth,
                       cellWidth: pinnedWidth,
+                      showPinnedDays: !portraitPhone,
+                      compactNames: portraitPhone,
                       bodyHeight: bodyHeight,
                       today: today,
                       yesterday: yesterday,
@@ -432,16 +452,23 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                       child: SingleChildScrollView(
                         controller: _gridScrollController,
                         scrollDirection: Axis.horizontal,
-                        child: SizedBox(
-                          width: daysInMonth * cellWidth,
-                          height: bodyHeight,
-                          child: _MonthGridColumn(
+                        // Its own Material so the day cells' Ink is painted
+                        // (and clipped) inside the scroll view, instead of
+                        // showing through behind the habit names when the
+                        // month is scrolled.
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: SizedBox(
+                            width: daysInMonth * cellWidth,
+                            height: bodyHeight,
+                            child: _MonthGridColumn(
                             habits: habits,
                             controller: widget.controller,
                             selectedMonth: _selectedMonth,
                             daysInMonth: daysInMonth,
-                            todayDay: todayDay,
-                            cellWidth: cellWidth,
+                              todayDay: todayDay,
+                              cellWidth: cellWidth,
+                            ),
                           ),
                         ),
                       ),
@@ -471,11 +498,15 @@ class _HabitViewToggle extends StatelessWidget {
     required this.strings,
     required this.compact,
     required this.onChanged,
+    this.iconsOnly = false,
   });
 
   final AppStrings strings;
   final bool compact;
   final ValueChanged<bool> onChanged;
+
+  /// On a phone the labels would push Archiv / + Habit onto another row.
+  final bool iconsOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -488,12 +519,14 @@ class _HabitViewToggle extends StatelessWidget {
       segments: [
         ButtonSegment(
           value: true,
-          label: Text(strings.compact),
+          label: iconsOnly ? null : Text(strings.compact),
+          tooltip: iconsOnly ? strings.compact : null,
           icon: const Icon(Icons.view_agenda_outlined),
         ),
         ButtonSegment(
           value: false,
-          label: Text(strings.month),
+          label: iconsOnly ? null : Text(strings.month),
+          tooltip: iconsOnly ? strings.month : null,
           icon: const Icon(Icons.calendar_view_month_outlined),
         ),
       ],
@@ -753,12 +786,20 @@ class _FrozenHabitColumn extends StatelessWidget {
     required this.yesterday,
     required this.onEdit,
     required this.onArchive,
+    this.showPinnedDays = true,
+    this.compactNames = false,
   });
 
   final List<Habit> habits;
   final LighthouseController controller;
   final double nameWidth;
   final double cellWidth;
+
+  /// Whether the Gestern / Heute columns are pinned next to the names.
+  final bool showPinnedDays;
+
+  /// Narrow name cells: the whole cell opens the habit menu.
+  final bool compactNames;
   final double bodyHeight;
   final DateTime today;
   final DateTime yesterday;
@@ -803,7 +844,7 @@ class _FrozenHabitColumn extends StatelessWidget {
         border: Border(right: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: SizedBox(
-        width: nameWidth + cellWidth * 2,
+        width: nameWidth + (showPinnedDays ? cellWidth * 2 : 0),
         height: bodyHeight,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -826,25 +867,27 @@ class _FrozenHabitColumn extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _PinnedCell(
-                    width: cellWidth,
-                    child: _dayHeader(
-                      context,
-                      label: strings.yesterday,
-                      date: yesterday,
-                      isToday: false,
+                  if (showPinnedDays) ...[
+                    _PinnedCell(
+                      width: cellWidth,
+                      child: _dayHeader(
+                        context,
+                        label: strings.yesterday,
+                        date: yesterday,
+                        isToday: false,
+                      ),
                     ),
-                  ),
-                  _PinnedCell(
-                    width: cellWidth,
-                    isToday: true,
-                    child: _dayHeader(
-                      context,
-                      label: strings.today,
-                      date: today,
+                    _PinnedCell(
+                      width: cellWidth,
                       isToday: true,
+                      child: _dayHeader(
+                        context,
+                        label: strings.today,
+                        date: today,
+                        isToday: true,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -863,32 +906,35 @@ class _FrozenHabitColumn extends StatelessWidget {
                       child: _HabitNameCell(
                         habit: habit,
                         controller: controller,
+                        compact: compactNames,
                         onEdit: () => onEdit(habit),
                         onArchive: () => onArchive(habit),
                       ),
                     ),
-                    _PinnedCell(
-                      width: cellWidth,
-                      child: _HabitDayCell(
-                        habitId: habit.id,
-                        date: yesterday,
-                        controller: controller,
+                    if (showPinnedDays) ...[
+                      _PinnedCell(
                         width: cellWidth,
-                        pinned: true,
+                        child: _HabitDayCell(
+                          habitId: habit.id,
+                          date: yesterday,
+                          controller: controller,
+                          width: cellWidth,
+                          pinned: true,
+                        ),
                       ),
-                    ),
-                    _PinnedCell(
-                      width: cellWidth,
-                      isToday: true,
-                      child: _HabitDayCell(
-                        habitId: habit.id,
-                        date: today,
-                        controller: controller,
+                      _PinnedCell(
                         width: cellWidth,
                         isToday: true,
-                        pinned: true,
+                        child: _HabitDayCell(
+                          habitId: habit.id,
+                          date: today,
+                          controller: controller,
+                          width: cellWidth,
+                          isToday: true,
+                          pinned: true,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -931,6 +977,7 @@ class _HabitNameCell extends StatelessWidget {
     required this.controller,
     required this.onEdit,
     required this.onArchive,
+    this.compact = false,
   });
 
   final Habit habit;
@@ -938,8 +985,57 @@ class _HabitNameCell extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onArchive;
 
+  /// No separate ⋮ button: the whole (narrow) cell opens the menu, and the
+  /// name may wrap onto a second line instead of being cut to a few letters.
+  final bool compact;
+
+  void _onSelected(String value) {
+    if (value == 'edit') {
+      onEdit();
+    }
+
+    if (value == 'archive') {
+      onArchive();
+    }
+  }
+
+  List<PopupMenuEntry<String>> _items(BuildContext context) {
+    return [
+      PopupMenuItem(value: 'edit', child: Text(controller.strings.edit)),
+      PopupMenuItem(value: 'archive', child: Text(controller.strings.archive)),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return PopupMenuButton<String>(
+        tooltip: controller.strings.manageHabit,
+        onSelected: _onSelected,
+        itemBuilder: _items,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            children: [
+              Text(habit.emoji, style: const TextStyle(fontSize: 17)),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  habit.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(left: 12),
       child: Row(
@@ -961,27 +1057,8 @@ class _HabitNameCell extends StatelessWidget {
             padding: EdgeInsets.zero,
             iconSize: 18,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
-            onSelected: (value) {
-              if (value == 'edit') {
-                onEdit();
-              }
-
-              if (value == 'archive') {
-                onArchive();
-              }
-            },
-            itemBuilder: (context) {
-              return [
-                PopupMenuItem(
-                  value: 'edit',
-                  child: Text(controller.strings.edit),
-                ),
-                PopupMenuItem(
-                  value: 'archive',
-                  child: Text(controller.strings.archive),
-                ),
-              ];
-            },
+            onSelected: _onSelected,
+            itemBuilder: _items,
           ),
         ],
       ),
@@ -1102,9 +1179,14 @@ class _TotalColumn extends StatelessWidget {
               height: _kHeaderHeight,
               color: colorScheme.surfaceContainerHighest,
               alignment: Alignment.center,
-              child: Text(
-                controller.strings.totalColumn,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              // Shrinks rather than wrapping in the slim phone-portrait column.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  controller.strings.totalColumn,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
             for (final habit in habits)
