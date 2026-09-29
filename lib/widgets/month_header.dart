@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
+import 'page_title.dart';
 
 class MonthHeader extends StatelessWidget {
   const MonthHeader({
@@ -31,6 +32,12 @@ class MonthHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final titleBlock = PageTitle(title: title, subtitle: subtitle);
+
+    if (isPhoneLayout(context)) {
+      return _buildCompact(context, titleBlock);
+    }
+
     final monthText = strings.monthAndYear(selectedMonth);
 
     final controls = Wrap(
@@ -76,27 +83,6 @@ class MonthHeader extends StatelessWidget {
         width: double.infinity,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final titleBlock = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            );
-
             if (constraints.maxWidth < 760) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,6 +97,82 @@ class MonthHeader extends StatelessWidget {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  /// Phone layout: small title, then one row with ‹ Month › (and Today) on
+  /// the left and the page's actions on the right. If the actions don't fit
+  /// next to the month they move onto their own row instead of overflowing.
+  Widget _buildCompact(BuildContext context, Widget titleBlock) {
+    // On the smallest phones the full month name would push the actions
+    // onto a second row.
+    final narrow = MediaQuery.sizeOf(context).width < 360;
+
+    final monthGroup = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          tooltip: strings.previousMonth,
+          onPressed: onPreviousMonth,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        Text(
+          narrow
+              ? strings.shortMonthAndYear(selectedMonth)
+              : strings.monthAndYear(selectedMonth),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          tooltip: strings.nextMonth,
+          onPressed: onNextMonth,
+          icon: const Icon(Icons.chevron_right),
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          tooltip: strings.today,
+          onPressed: onToday,
+          icon: const Icon(Icons.today_outlined),
+        ),
+      ],
+    );
+
+    final actions = trailing;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 10),
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            titleBlock,
+            if (showMonthControls || actions != null) ...[
+              const SizedBox(height: 8),
+              // Full width, so spaceBetween can push the actions to the right.
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    // Pull the first chevron flush with the title's left edge.
+                    if (showMonthControls)
+                      Transform.translate(
+                        offset: const Offset(-8, 0),
+                        child: monthGroup,
+                      ),
+                    ?actions,
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

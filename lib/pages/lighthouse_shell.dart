@@ -153,25 +153,33 @@ class _LighthouseShellState extends State<LighthouseShell> {
           );
         }
 
+        // A phone gets no AppBar: every tab's title already carries the mark,
+        // and the height is better spent on content.
         return Scaffold(
-          appBar: AppBar(
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const LighthouseMark(height: 28),
-                const SizedBox(width: 10),
-                Text(
-                  'Lighthouse',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.primary,
+          appBar: isPhone
+              ? null
+              : AppBar(
+                  title: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const LighthouseMark(height: 28),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Lighthouse',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+          body: SafeArea(
+            bottom: false,
+            child: IndexedStack(index: _selectedIndex, children: _pages),
           ),
-          body: IndexedStack(index: _selectedIndex, children: _pages),
           bottomNavigationBar: NavigationBar(
+            height: isPhone ? 64 : null,
             selectedIndex: _selectedIndex,
             onDestinationSelected: _selectPage,
             destinations: [

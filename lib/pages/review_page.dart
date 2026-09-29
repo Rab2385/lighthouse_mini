@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../state/lighthouse_controller.dart';
+import '../widgets/page_title.dart';
 
 enum _RangePreset { thisMonth, last7Days, last30Days, thisYear, custom }
 
@@ -287,23 +288,15 @@ class _ReviewHeader extends StatelessWidget {
         ? strings.rangeDays(rangeDays)
         : strings.daysElapsedOfRange(elapsedDays, rangeDays);
 
+    final phone = isPhoneLayout(context);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      padding: EdgeInsets.fromLTRB(24, phone ? 12 : 24, 24, phone ? 10 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            strings.review,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$rangeLabel · $daysText',
-            style: TextStyle(color: colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 14),
+          PageTitle(title: strings.review, subtitle: '$rangeLabel · $daysText'),
+          SizedBox(height: phone ? 8 : 14),
           Row(
             children: [
               Expanded(

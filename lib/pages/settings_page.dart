@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
 import '../state/lighthouse_controller.dart';
+import '../widgets/page_title.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.controller});
@@ -124,7 +125,12 @@ class _SettingsPageState extends State<SettingsPage> {
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              isPhoneLayout(context) ? 12 : 24,
+              24,
+              40,
+            ),
             child: Align(
               alignment: Alignment.topLeft,
               child: ConstrainedBox(
@@ -132,18 +138,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      strings.settings,
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      strings.settingsSubtitle,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    PageTitle(
+                      title: strings.settings,
+                      subtitle: strings.settingsSubtitle,
                     ),
                     const SizedBox(height: 22),
 
