@@ -192,6 +192,17 @@ class AppStrings {
   String get greetingEvening => _p('Guten Abend', 'Good evening');
   String get greetingNight => _p('Gute Nacht', 'Good night');
 
+  // ---- Memories ----------------------------------------------------
+  String get memoryYearAgo => _p('Heute vor einem Jahr', 'A year ago today');
+  String get memoryMonthAgo => _p('Heute vor einem Monat', 'A month ago today');
+  String get showMemoriesTitle =>
+      _p('Erinnerungen an frühere Einträge', 'Memories from earlier entries');
+  String get showMemoriesSubtitle => _p(
+    'Zeigt oben einen Eintrag von heute vor einem Jahr oder Monat.',
+    'Shows an entry from a year or a month ago today at the top.',
+  );
+  String get helpersTitle => _p('Kleine Helfer', 'Little helpers');
+
   // ---- Review: Good Things ------------------------------------------
   String get copyAsText => _p('Als Text kopieren', 'Copy as text');
   String get copied => _p('Kopiert.', 'Copied.');

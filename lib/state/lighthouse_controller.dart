@@ -19,6 +19,9 @@ class LighthouseController extends ChangeNotifier {
   /// intentionally empty habit list stays empty on the next launch.
   static const String _defaultHabitsSeededKey = 'defaultHabitsSeeded';
 
+  static const String _showMemoriesKey = 'showMemories';
+  static const String _memoryDismissedOnKey = 'memoryDismissedOn';
+
   static const String _lastBackupAtKey = 'lastBackupAt';
   static const String _backupReminderDismissedAtKey =
       'backupReminderDismissedAt';
@@ -28,6 +31,7 @@ class LighthouseController extends ChangeNotifier {
   static const Set<String> _deviceOnlySettings = {
     _lastBackupAtKey,
     _backupReminderDismissedAtKey,
+    _memoryDismissedOnKey,
   };
 
   final LighthouseDatabase _database;
@@ -51,6 +55,8 @@ class LighthouseController extends ChangeNotifier {
   DateTime? _lastBackupAt;
   DateTime? _backupReminderDismissedAt;
   bool _hasSafetyBackup = false;
+  bool _showMemories = true;
+  String? _memoryDismissedOn;
 
   bool get darkMode => _darkMode;
   String get userName => _userName;
@@ -140,6 +146,8 @@ class LighthouseController extends ChangeNotifier {
       settings[_backupReminderDismissedAtKey],
     );
     _hasSafetyBackup = await _database.loadSafetyBackup() != null;
+    _showMemories = settings[_showMemoriesKey] as bool? ?? true;
+    _memoryDismissedOn = settings[_memoryDismissedOnKey] as String?;
 
     final storedLanguage = settings['language'] as String?;
     _languageCode = AppStrings.supportedCodes.contains(storedLanguage)
@@ -610,6 +618,71 @@ class LighthouseController extends ChangeNotifier {
     );
   }
 
+  // ---- Memories -------------------------------------------------------------
+
+  /// Whether Good Things shows "Heute vor einem Jahr / Monat".
+  bool get showMemories => _showMemories;
+
+  /// Today's memory card, unless switched off or dismissed for today.
+  Memory? get todaysMemory {
+    if (!_showMemories || _memoryDismissedOn == _dateKey(today)) {
+      return null;
+    }
+
+    return memoryFor(today);
+  }
+
+  /// A Good Thing written exactly one year before [day], or — if there is
+  /// none — exactly one month before. A day that doesn't exist there (29.02.
+  /// a year later, 31.03. a month earlier) has no memory. With several
+  /// entries on that day the pick depends only on [day], so it stays the
+  /// same all day instead of changing on every rebuild.
+  Memory? memoryFor(DateTime day) {
+    for (final age in MemoryAge.values) {
+      final then = switch (age) {
+        MemoryAge.year => DateTime(day.year - 1, day.month, day.day),
+        MemoryAge.month => DateTime(day.year, day.month - 1, day.day),
+      };
+
+      // DateTime rolls 31.02. over into March — that date didn't exist.
+      if (then.day != day.day) {
+        continue;
+      }
+
+      final candidates = goodThingsForDate(then);
+
+      if (candidates.isNotEmpty) {
+        final seed = day.year * 10000 + day.month * 100 + day.day;
+        return Memory(candidates[seed % candidates.length], age);
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> setShowMemories(bool value) async {
+    if (_showMemories == value) {
+      return false;
+    }
+
+    final previous = _showMemories;
+    _showMemories = value;
+    notifyListeners();
+
+    return _persist(
+      () => _database.saveSetting(_showMemoriesKey, value),
+      rollback: () => _showMemories = previous,
+    );
+  }
+
+  /// Hides today's memory card until tomorrow.
+  Future<void> dismissTodaysMemory() async {
+    final key = _dateKey(today);
+    _memoryDismissedOn = key;
+    notifyListeners();
+    await _database.saveSetting(_memoryDismissedOnKey, key);
+  }
+
   // ---- Backup ---------------------------------------------------------------
 
   /// When a backup file was last saved on this device (or the date of the
@@ -753,6 +826,8 @@ class LighthouseController extends ChangeNotifier {
     _lastBackupAt = null;
     _backupReminderDismissedAt = null;
     _hasSafetyBackup = false;
+    _showMemories = true;
+    _memoryDismissedOn = null;
 
     await _createDefaultHabits();
     notifyListeners();
@@ -934,4 +1009,14 @@ class _SuggestionStatistics {
       lastUsed: lastUsed ?? this.lastUsed,
     );
   }
+}
+
+enum MemoryAge { year, month }
+
+/// An earlier Good Thing brought back on the same calendar day.
+class Memory {
+  const Memory(this.entry, this.age);
+
+  final GoodThing entry;
+  final MemoryAge age;
 }

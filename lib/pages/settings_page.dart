@@ -175,6 +175,38 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 16),
 
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12, bottom: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: Text(
+                                strings.helpersTitle,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            SwitchListTile(
+                              title: Text(strings.showMemoriesTitle),
+                              subtitle: Text(strings.showMemoriesSubtitle),
+                              secondary: const Icon(
+                                Icons.auto_awesome_outlined,
+                              ),
+                              value: widget.controller.showMemories,
+                              onChanged: widget.controller.setShowMemories,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     sectionCard(
                       title: strings.yourName,
                       child: Column(
