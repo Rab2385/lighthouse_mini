@@ -192,6 +192,72 @@ class AppStrings {
   String get greetingEvening => _p('Guten Abend', 'Good evening');
   String get greetingNight => _p('Gute Nacht', 'Good night');
 
+  // ---- Backup ------------------------------------------------------
+  String get backup => 'Backup';
+  String get backupText => _p(
+    'Deine Einträge liegen nur auf diesem Gerät. Sichere sie ab und zu als '
+        'Datei – z. B. in deiner Cloud oder per Mail an dich selbst.',
+    'Your entries live only on this device. Save them as a file now and '
+        'then – for example to your cloud or by mail to yourself.',
+  );
+  String get backupTextWeb => _p(
+    'Im Browser können Daten verloren gehen, wenn Websitedaten gelöscht '
+        'werden oder der Speicher knapp wird.',
+    'In a browser, data can be lost when site data is cleared or storage '
+        'runs low.',
+  );
+  String get backupSave => _p('Backup speichern', 'Save backup');
+  String get backupRestore => _p('Wiederherstellen', 'Restore');
+  String lastBackup(String date) =>
+      _p('Letztes Backup: $date', 'Last backup: $date');
+  String get noBackupYet =>
+      _p('Noch kein Backup gespeichert.', 'No backup saved yet.');
+  String backupCounts(int goodThings, int habits) =>
+      '$goodThings Good Things · $habits Habits';
+  String get backupSaved => _p('Backup gespeichert.', 'Backup saved.');
+  String get backupRestoreQ =>
+      _p('Backup wiederherstellen?', 'Restore backup?');
+  String backupRestoreText(String date, String counts, String current) => _p(
+    'Backup vom $date · $counts.\n\n'
+        'Deine aktuellen Daten ($current) werden ersetzt. Der aktuelle Stand '
+        'wird vorher gesichert und lässt sich zurückholen.',
+    'Backup from $date · $counts.\n\n'
+        'Your current data ($current) will be replaced. It is kept as a '
+        'safety copy first, so you can bring it back.',
+  );
+  String get backupRestored =>
+      _p('Backup wiederhergestellt.', 'Backup restored.');
+  String get backupUndoRestore =>
+      _p('Vorherigen Stand zurückholen', 'Bring back previous data');
+  String get backupUndone =>
+      _p('Vorheriger Stand wiederhergestellt.', 'Previous data brought back.');
+  String get backupNotLighthouse => _p(
+    'Diese Datei ist kein Lighthouse-Backup.',
+    'This file is not a Lighthouse backup.',
+  );
+  String get backupTooNew => _p(
+    'Dieses Backup stammt aus einer neueren App-Version. Bitte aktualisiere '
+        'Lighthouse.',
+    'This backup was made by a newer version. Please update Lighthouse.',
+  );
+  String get backupDamaged => _p(
+    'Das Backup ist beschädigt und wurde nicht geladen. Deine Daten sind '
+        'unverändert.',
+    'The backup is damaged and was not loaded. Your data is unchanged.',
+  );
+  String get backupFailed => _p(
+    'Das hat nicht geklappt. Deine Daten sind unverändert.',
+    "That didn't work. Your data is unchanged.",
+  );
+  String backupReminder(int days) =>
+      _p('Letztes Backup vor $days Tagen', 'Last backup $days days ago');
+  String get backupReminderNever => _p(
+    'Deine Einträge sind noch nicht gesichert',
+    'Your entries have no backup yet',
+  );
+  String get backupNow => _p('Jetzt sichern', 'Back up now');
+  String get dismiss => _p('Ausblenden', 'Dismiss');
+
   // ---- Names ------------------------------------------------------
   List<String> get monthNames => _en
       ? const [

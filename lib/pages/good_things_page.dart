@@ -5,6 +5,7 @@ import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../state/lighthouse_controller.dart';
 import '../util/resume_policy.dart';
+import '../widgets/backup_card.dart';
 import '../widgets/month_header.dart';
 
 class GoodThingsPage extends StatefulWidget {
@@ -284,6 +285,12 @@ class _GoodThingsPageState extends State<GoodThingsPage>
                       ),
                     ),
             ),
+            if (widget.controller.showBackupReminder &&
+                _searchQuery.trim().isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+                child: BackupReminderBanner(controller: widget.controller),
+              ),
             Expanded(
               child: _searchQuery.trim().isNotEmpty
                   ? _SearchResults(
