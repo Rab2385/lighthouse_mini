@@ -192,6 +192,29 @@ class AppStrings {
   String get greetingEvening => _p('Guten Abend', 'Good evening');
   String get greetingNight => _p('Gute Nacht', 'Good night');
 
+  // ---- Evening reminder ------------------------------------------
+  String get reminderCardTitle => _p('Tägliche Erinnerung', 'Daily reminder');
+  String get reminderCardText => _p(
+    'Eine ruhige Nachricht am Abend – nur, wenn du heute noch nichts '
+        'eingetragen hast.',
+    "One calm message in the evening – only if you haven't written anything "
+        'today.',
+  );
+  String get reminderUnsupported => _p(
+    'Erinnerungen gibt es in der App für Android und iOS.',
+    'Reminders are available in the Android and iOS app.',
+  );
+  String get reminderPermissionDenied => _p(
+    'Benachrichtigungen sind für Lighthouse ausgeschaltet. Du kannst sie in '
+        'den Systemeinstellungen erlauben.',
+    'Notifications are turned off for Lighthouse. You can allow them in the '
+        'system settings.',
+  );
+  String reminderAt(String time) => _p('Um $time', 'At $time');
+  String get reminderTitle => _p('Was war heute gut?', 'What was good today?');
+  String get reminderBody => _p('Ein Satz reicht.', 'One sentence is enough.');
+  String get reminderChannel => _p('Abend-Erinnerung', 'Evening reminder');
+
   // ---- Memories ----------------------------------------------------
   String get memoryYearAgo => _p('Heute vor einem Jahr', 'A year ago today');
   String get memoryMonthAgo => _p('Heute vor einem Monat', 'A month ago today');

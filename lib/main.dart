@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 
 import 'app/lighthouse_app.dart';
 import 'data/lighthouse_database.dart';
+import 'services/reminder_scheduler.dart';
 import 'state/lighthouse_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final database = LighthouseDatabase();
-  final controller = LighthouseController(database);
+  final controller = LighthouseController(
+    database,
+    reminders: await LocalReminderScheduler.create(),
+  );
 
   try {
     await controller.initialize();

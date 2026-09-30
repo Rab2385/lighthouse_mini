@@ -10,10 +10,23 @@ import '../data/lighthouse_database.dart';
 import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../models/habit.dart';
+import '../services/reminder_scheduler.dart';
 import '../util/greeting.dart';
+import '../util/reminder_plan.dart';
 
 class LighthouseController extends ChangeNotifier {
-  LighthouseController(this._database);
+  LighthouseController(
+    this._database, {
+    this._reminders = const NoReminderScheduler(),
+  });
+
+  final ReminderScheduler _reminders;
+
+  static const String _reminderEnabledKey = 'reminderEnabled';
+  static const String _reminderMinutesKey = 'reminderMinutes';
+
+  /// 20:30 — after the day, before bed.
+  static const int defaultReminderMinutes = 20 * 60 + 30;
 
   /// Settings key marking that the starter habits were created once, so an
   /// intentionally empty habit list stays empty on the next launch.
@@ -65,6 +78,8 @@ class LighthouseController extends ChangeNotifier {
   bool _hasSafetyBackup = false;
   bool _showMemories = true;
   bool _quickEntryOnOpen = true;
+  bool _reminderEnabled = false;
+  int _reminderMinutes = defaultReminderMinutes;
   String? _memoryDismissedOn;
 
   bool get darkMode => _darkMode;
@@ -157,6 +172,9 @@ class LighthouseController extends ChangeNotifier {
     _hasSafetyBackup = await _database.loadSafetyBackup() != null;
     _showMemories = settings[_showMemoriesKey] as bool? ?? true;
     _quickEntryOnOpen = settings[_quickEntryOnOpenKey] as bool? ?? true;
+    _reminderEnabled = settings[_reminderEnabledKey] as bool? ?? false;
+    _reminderMinutes =
+        settings[_reminderMinutesKey] as int? ?? defaultReminderMinutes;
     _memoryDismissedOn = settings[_memoryDismissedOnKey] as String?;
 
     final storedLanguage = settings['language'] as String?;
@@ -180,6 +198,7 @@ class LighthouseController extends ChangeNotifier {
     }
 
     notifyListeners();
+    await _planReminders();
   }
 
   @override
@@ -363,10 +382,12 @@ class LighthouseController extends ChangeNotifier {
     _goodThings.add(entry);
     notifyListeners();
 
-    return _persist(
+    final saved = await _persist(
       () => _database.saveGoodThing(entry),
       rollback: () => _goodThings.removeWhere((e) => e.id == entry.id),
     );
+    await _planRemindersIfToday(entry.date);
+    return saved;
   }
 
   /// Puts a deleted entry back exactly as it was — same id and timestamps,
@@ -379,10 +400,12 @@ class LighthouseController extends ChangeNotifier {
     _goodThings.add(entry);
     notifyListeners();
 
-    return _persist(
+    final saved = await _persist(
       () => _database.saveGoodThing(entry),
       rollback: () => _goodThings.removeWhere((e) => e.id == entry.id),
     );
+    await _planRemindersIfToday(entry.date);
+    return saved;
   }
 
   Future<bool> updateGoodThing({
@@ -426,10 +449,12 @@ class LighthouseController extends ChangeNotifier {
     _goodThings.removeWhere((entry) => entry.id == id);
     notifyListeners();
 
-    return _persist(
+    final deleted = await _persist(
       () => _database.deleteGoodThing(id),
       rollback: () => _goodThings.addAll(removed),
     );
+    await _planRemindersIfToday(removed.first.date);
+    return deleted;
   }
 
   bool isHabitCompleted({required String habitId, required DateTime date}) {
@@ -606,10 +631,12 @@ class LighthouseController extends ChangeNotifier {
     _languageCode = code;
     notifyListeners();
 
-    return _persist(
+    final saved = await _persist(
       () => _database.saveSetting('language', code),
       rollback: () => _languageCode = previous,
     );
+    await _planReminders();
+    return saved;
   }
 
   Future<bool> setUserName(String value) async {
@@ -658,6 +685,72 @@ class LighthouseController extends ChangeNotifier {
       () => _database.saveSetting(_quickEntryOnOpenKey, value),
       rollback: () => _quickEntryOnOpen = previous,
     );
+  }
+
+  // ---- Evening reminder -----------------------------------------------------
+
+  /// Whether this device can show reminders (Android / iOS app).
+  bool get reminderSupported => _reminders.isSupported;
+
+  bool get reminderEnabled => _reminderEnabled && _reminders.isSupported;
+
+  /// Minutes after midnight, e.g. 1230 for 20:30.
+  int get reminderMinutes => _reminderMinutes;
+
+  /// Switching on asks for the notification permission first; if it is
+  /// refused the reminder stays off and this returns false.
+  Future<bool> setReminderEnabled(bool value) async {
+    if (value && !await _reminders.requestPermission()) {
+      return false;
+    }
+
+    _reminderEnabled = value;
+    notifyListeners();
+    await _database.saveSetting(_reminderEnabledKey, value);
+    await _planReminders();
+    return true;
+  }
+
+  Future<void> setReminderMinutes(int minutes) async {
+    _reminderMinutes = minutes;
+    notifyListeners();
+    await _database.saveSetting(_reminderMinutesKey, minutes);
+    await _planReminders();
+  }
+
+  Future<void> _planRemindersIfToday(DateTime date) async {
+    if (_isSameDay(date, today)) {
+      await _planReminders();
+    }
+  }
+
+  /// Re-plans the next evenings. Never lets a notification problem get in
+  /// the way of saving an entry.
+  Future<void> _planReminders() async {
+    if (!_reminders.isSupported) {
+      return;
+    }
+
+    try {
+      if (!_reminderEnabled) {
+        await _reminders.cancelAll();
+        return;
+      }
+
+      await _reminders.schedule(
+        reminderTimes(
+          now: DateTime.now(),
+          hour: _reminderMinutes ~/ 60,
+          minute: _reminderMinutes % 60,
+          wroteToday: goodThingsForDate(today).isNotEmpty,
+        ),
+        title: strings.reminderTitle,
+        body: strings.reminderBody,
+        channelName: strings.reminderChannel,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Lighthouse could not plan reminders: $error\n$stackTrace');
+    }
   }
 
   // ---- Memories -------------------------------------------------------------
@@ -871,9 +964,12 @@ class LighthouseController extends ChangeNotifier {
     _showMemories = true;
     _memoryDismissedOn = null;
     _quickEntryOnOpen = true;
+    _reminderEnabled = false;
+    _reminderMinutes = defaultReminderMinutes;
 
     await _createDefaultHabits();
     notifyListeners();
+    await _planReminders();
     return true;
   }
 
