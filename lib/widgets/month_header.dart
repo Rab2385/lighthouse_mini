@@ -149,6 +149,28 @@ class MonthHeader extends StatelessWidget {
 
     final actions = trailing;
 
+    // A phone held sideways has little height: one row — title, month and
+    // actions — without the greeting. Anything that doesn't fit wraps.
+    if (MediaQuery.sizeOf(context).height < 500) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 6, 24, 4),
+        child: SizedBox(
+          width: double.infinity,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              PageTitle(title: title),
+              if (showMonthControls) monthGroup,
+              ?actions,
+            ],
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 10),
       child: SizedBox(
