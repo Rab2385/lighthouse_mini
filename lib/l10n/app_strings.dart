@@ -60,8 +60,11 @@ class AppStrings {
   String get editEntry => _p('Eintrag bearbeiten', 'Edit entry');
   String get goodThingLabel => 'Good Thing';
   String get entryDeleted => _p('Eintrag gelöscht.', 'Entry deleted.');
-  String get writeSomethingGood =>
-      _p('Etwas Gutes aufschreiben …', 'Write something good …');
+  String get hintToday => _p('Was war heute gut?', 'What was good today?');
+  String get hintPast => _p('Was war gut?', 'What was good?');
+  String get hintAhead =>
+      _p('Worauf freust du dich?', 'What are you looking forward to?');
+  String get addEntry => _p('Eintrag hinzufügen', 'Add entry');
   String get saveWithEnter => _p('Mit Enter speichern', 'Save with Enter');
   String get statusToday => _p('Heute', 'Today');
   String get statusAhead => _p('Ahead', 'Ahead');
