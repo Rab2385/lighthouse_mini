@@ -567,8 +567,12 @@ class _HabitCompactList extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    // The smallest phones (320 px): every pixel goes to the habit names.
+    final narrow = MediaQuery.sizeOf(context).width < 360;
+    final side = narrow ? 12.0 : 24.0;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+      padding: EdgeInsets.fromLTRB(side, 0, side, 40),
       child: Align(
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
@@ -588,6 +592,7 @@ class _HabitCompactList extends StatelessWidget {
                   _HabitCompactRow(
                     habit: habits[i],
                     controller: controller,
+                    narrow: narrow,
                     today: today,
                     yesterday: yesterday,
                     onEdit: () => onEdit(habits[i]),
@@ -607,6 +612,7 @@ class _HabitCompactRow extends StatelessWidget {
   const _HabitCompactRow({
     required this.habit,
     required this.controller,
+    this.narrow = false,
     required this.today,
     required this.yesterday,
     required this.onEdit,
@@ -615,6 +621,10 @@ class _HabitCompactRow extends StatelessWidget {
 
   final Habit habit;
   final LighthouseController controller;
+
+  /// No separate ⋮ button: the name opens the habit menu, so the name keeps
+  /// enough room on a 320 px phone.
+  final bool narrow;
   final DateTime today;
   final DateTime yesterday;
   final VoidCallback onEdit;
@@ -625,41 +635,56 @@ class _HabitCompactRow extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final strings = controller.strings;
 
+    void onSelected(String value) {
+      if (value == 'edit') onEdit();
+      if (value == 'archive') onArchive();
+    }
+
+    List<PopupMenuEntry<String>> menuItems(BuildContext context) => [
+      PopupMenuItem(value: 'edit', child: Text(strings.edit)),
+      PopupMenuItem(value: 'archive', child: Text(strings.archive)),
+    ];
+
     final monthTotal = controller.habitTotalForMonth(
       habitId: habit.id,
       selectedMonth: DateTime(today.year, today.month),
     );
 
+    final nameBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          habit.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          strings.nThisMonth(monthTotal),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+        ),
+      ],
+    );
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      padding: EdgeInsets.fromLTRB(narrow ? 12 : 16, 12, 8, 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(habit.emoji, style: const TextStyle(fontSize: 22)),
-          const SizedBox(width: 14),
+          SizedBox(width: narrow ? 10 : 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  habit.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  strings.nThisMonth(monthTotal),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+            child: narrow
+                ? PopupMenuButton<String>(
+                    tooltip: strings.manageHabit,
+                    onSelected: onSelected,
+                    itemBuilder: menuItems,
+                    child: nameBlock,
+                  )
+                : nameBlock,
           ),
           const SizedBox(width: 8),
           _CompactToggle(
@@ -678,20 +703,13 @@ class _HabitCompactRow extends StatelessWidget {
             controller: controller,
             isToday: true,
           ),
-          PopupMenuButton<String>(
-            tooltip: strings.manageHabit,
-            iconSize: 20,
-            onSelected: (value) {
-              if (value == 'edit') onEdit();
-              if (value == 'archive') onArchive();
-            },
-            itemBuilder: (context) {
-              return [
-                PopupMenuItem(value: 'edit', child: Text(strings.edit)),
-                PopupMenuItem(value: 'archive', child: Text(strings.archive)),
-              ];
-            },
-          ),
+          if (!narrow)
+            PopupMenuButton<String>(
+              tooltip: strings.manageHabit,
+              iconSize: 20,
+              onSelected: onSelected,
+              itemBuilder: menuItems,
+            ),
         ],
       ),
     );

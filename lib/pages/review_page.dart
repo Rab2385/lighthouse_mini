@@ -591,8 +591,10 @@ class _HabitReviewRow extends StatelessWidget {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 110,
+          // Name and bar share the width, so on a 320 px phone the bar
+          // doesn't shrink to a sliver next to a fixed-width name.
+          Expanded(
+            flex: 3,
             child: Text(
               name,
               overflow: TextOverflow.ellipsis,
@@ -601,6 +603,7 @@ class _HabitReviewRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
+            flex: 2,
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,

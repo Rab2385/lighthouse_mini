@@ -286,32 +286,36 @@ class _LighthouseShellState extends State<LighthouseShell>
             bottom: false,
             child: IndexedStack(index: _selectedIndex, children: _pages),
           ),
-          bottomNavigationBar: NavigationBar(
-            height: isPhone ? 64 : null,
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: _selectPage,
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.auto_awesome_outlined),
-                selectedIcon: const Icon(Icons.auto_awesome),
-                label: strings.navGood,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.grid_view_outlined),
-                selectedIcon: const Icon(Icons.grid_view),
-                label: strings.habits,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.insights_outlined),
-                selectedIcon: const Icon(Icons.insights),
-                label: strings.review,
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.settings_outlined),
-                selectedIcon: const Icon(Icons.settings),
-                label: strings.settings,
-              ),
-            ],
+          bottomNavigationBar: _SmallScreenNavigationLabels(
+            // "Einstellungen" is cut off at 12 px below ~360 px width.
+            enabled: constraints.maxWidth < 360,
+            child: NavigationBar(
+              height: isPhone ? 64 : null,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _selectPage,
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.auto_awesome_outlined),
+                  selectedIcon: const Icon(Icons.auto_awesome),
+                  label: strings.navGood,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.grid_view_outlined),
+                  selectedIcon: const Icon(Icons.grid_view),
+                  label: strings.habits,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.insights_outlined),
+                  selectedIcon: const Icon(Icons.insights),
+                  label: strings.review,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.settings_outlined),
+                  selectedIcon: const Icon(Icons.settings),
+                  label: strings.settings,
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -465,6 +469,42 @@ class _SidebarSettingsButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Slightly smaller navigation labels on the narrowest phones, so the longest
+/// one ("Einstellungen") fits its slot instead of being cut off.
+class _SmallScreenNavigationLabels extends StatelessWidget {
+  const _SmallScreenNavigationLabels({
+    required this.enabled,
+    required this.child,
+  });
+
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) {
+      return child;
+    }
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return NavigationBarTheme(
+      data: NavigationBarTheme.of(context).copyWith(
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          return theme.textTheme.labelMedium?.copyWith(
+            fontSize: 11,
+            color: states.contains(WidgetState.selected)
+                ? colorScheme.onSurface
+                : colorScheme.onSurfaceVariant,
+          );
+        }),
+      ),
+      child: child,
     );
   }
 }

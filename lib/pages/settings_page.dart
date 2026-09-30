@@ -104,21 +104,25 @@ class _SettingsPageState extends State<SettingsPage> {
         final phone = isPhoneLayout(context);
 
         Widget sectionCard({required String title, required Widget child}) {
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
+          // Full width, so short cards (Sprache) line up with the others.
+          return SizedBox(
+            width: double.infinity,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  child,
-                ],
+                    const SizedBox(height: 12),
+                    child,
+                  ],
+                ),
               ),
             ),
           );

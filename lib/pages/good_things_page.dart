@@ -185,7 +185,8 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
       Scrollable.ensureVisible(
         cardContext,
-        alignment: 0.06,
+        // Flush with the top: no sliver of the day before peeking out.
+        alignment: 0,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
       ).then((_) {
