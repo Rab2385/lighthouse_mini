@@ -14,7 +14,11 @@ void main() {
         databaseFactoryMemory,
         'edit_test.db',
       );
-      final controller = LighthouseController(database);
+      // The dialog's German labels are asserted below.
+      final controller = LighthouseController(
+        database,
+        deviceLanguage: () => 'de',
+      );
 
       // Sembast does real async I/O, which never completes inside the
       // FakeAsync zone testWidgets runs in — so do the setup in runAsync.

@@ -101,6 +101,7 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context, child) {
         final theme = Theme.of(context);
         final strings = _strings;
+        final phone = isPhoneLayout(context);
 
         Widget sectionCard({required String title, required Widget child}) {
           return Card(
@@ -167,13 +168,51 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    Card(
-                      child: SwitchListTile(
-                        title: Text(strings.darkMode),
-                        subtitle: Text(strings.darkModeSubtitle),
-                        secondary: const Icon(Icons.dark_mode_outlined),
-                        value: widget.controller.darkMode,
-                        onChanged: widget.controller.setDarkMode,
+                    sectionCard(
+                      title: strings.appearance,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(strings.appearanceSubtitle),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            // Icons would squeeze "System" onto two lines
+                            // on a phone; the words say it all.
+                            child: SegmentedButton<ThemePreference>(
+                              showSelectedIcon: false,
+                              segments: [
+                                ButtonSegment(
+                                  value: ThemePreference.system,
+                                  icon: phone
+                                      ? null
+                                      : const Icon(
+                                          Icons.brightness_auto_outlined,
+                                        ),
+                                  label: Text(strings.themeSystem),
+                                ),
+                                ButtonSegment(
+                                  value: ThemePreference.light,
+                                  icon: phone
+                                      ? null
+                                      : const Icon(Icons.light_mode_outlined),
+                                  label: Text(strings.themeLight),
+                                ),
+                                ButtonSegment(
+                                  value: ThemePreference.dark,
+                                  icon: phone
+                                      ? null
+                                      : const Icon(Icons.dark_mode_outlined),
+                                  label: Text(strings.themeDark),
+                                ),
+                              ],
+                              selected: {widget.controller.themePreference},
+                              onSelectionChanged: (selection) => widget
+                                  .controller
+                                  .setThemePreference(selection.first),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),

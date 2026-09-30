@@ -148,9 +148,14 @@ class AppStrings {
     'Language, appearance, name and local data.',
   );
   String get language => _p('Sprache', 'Language');
-  String get darkMode => 'Dark Mode';
-  String get darkModeSubtitle =>
-      _p('Ruhiges dunkles Petrol-Design.', 'Calm dark petrol design.');
+  String get appearance => _p('Aussehen', 'Appearance');
+  String get appearanceSubtitle => _p(
+    'Folgt dem Hell/Dunkel des Handys – oder immer hell bzw. dunkel.',
+    "Follows your phone's light/dark setting – or always light or dark.",
+  );
+  String get themeSystem => 'System';
+  String get themeLight => _p('Hell', 'Light');
+  String get themeDark => _p('Dunkel', 'Dark');
   String get yourName => _p('Dein Name', 'Your name');
   String get yourNameSubtitle => _p(
     'Wird für die persönliche Begrüßung auf der Good-Things-Seite genutzt.',

@@ -18,9 +18,18 @@ class LighthouseController extends ChangeNotifier {
   LighthouseController(
     this._database, {
     this._reminders = const NoReminderScheduler(),
+    this._deviceLanguage = _platformLanguage,
   });
 
   final ReminderScheduler _reminders;
+
+  /// The phone's language code, e.g. 'en'. Injectable for tests.
+  final String Function() _deviceLanguage;
+
+  static String _platformLanguage() =>
+      PlatformDispatcher.instance.locale.languageCode;
+
+  static const String _themeModeKey = 'themeMode';
 
   static const String _reminderEnabledKey = 'reminderEnabled';
   static const String _reminderMinutesKey = 'reminderMinutes';
@@ -68,10 +77,13 @@ class LighthouseController extends ChangeNotifier {
   final List<Habit> _habits = [];
   final Set<String> _completedHabitKeys = {};
 
-  bool _darkMode = false;
+  ThemePreference _themePreference = ThemePreference.system;
   String _userName = '';
   bool _habitCompactView = true;
   String _languageCode = 'de';
+
+  /// False while the language simply follows the phone.
+  bool _languageChosen = false;
   int _idCounter = 0;
   DateTime? _lastBackupAt;
   DateTime? _backupReminderDismissedAt;
@@ -82,7 +94,8 @@ class LighthouseController extends ChangeNotifier {
   int _reminderMinutes = defaultReminderMinutes;
   String? _memoryDismissedOn;
 
-  bool get darkMode => _darkMode;
+  /// System (follow the phone), always light or always dark.
+  ThemePreference get themePreference => _themePreference;
   String get userName => _userName;
   String get languageCode => _languageCode;
 
@@ -162,7 +175,7 @@ class LighthouseController extends ChangeNotifier {
       ..addAll(await _database.loadHabitCompletionKeys());
 
     final settings = await _database.loadSettings();
-    _darkMode = settings['darkMode'] as bool? ?? false;
+    _themePreference = _themeFromSettings(settings);
     _userName = (settings['userName'] as String? ?? '').trim();
     _habitCompactView = settings['habitCompactView'] as bool? ?? true;
     _lastBackupAt = _parseDate(settings[_lastBackupAtKey]);
@@ -178,9 +191,8 @@ class LighthouseController extends ChangeNotifier {
     _memoryDismissedOn = settings[_memoryDismissedOnKey] as String?;
 
     final storedLanguage = settings['language'] as String?;
-    _languageCode = AppStrings.supportedCodes.contains(storedLanguage)
-        ? storedLanguage!
-        : 'de';
+    _languageChosen = AppStrings.supportedCodes.contains(storedLanguage);
+    _languageCode = _languageChosen ? storedLanguage! : _languageFromDevice();
 
     final defaultsSeeded = settings[_defaultHabitsSeededKey] as bool? ?? false;
 
@@ -592,19 +604,44 @@ class LighthouseController extends ChangeNotifier {
     );
   }
 
-  Future<bool> setDarkMode(bool value) async {
-    if (_darkMode == value) {
+  Future<bool> setThemePreference(ThemePreference value) async {
+    if (_themePreference == value) {
       return false;
     }
 
-    final previous = _darkMode;
-    _darkMode = value;
+    final previous = _themePreference;
+    _themePreference = value;
     notifyListeners();
 
     return _persist(
-      () => _database.saveSetting('darkMode', value),
-      rollback: () => _darkMode = previous,
+      () => _database.saveSetting(_themeModeKey, value.name),
+      rollback: () => _themePreference = previous,
     );
+  }
+
+  /// The saved choice, or — for data from before there was a choice — the
+  /// old dark-mode switch: on means dark, switched off means light, never
+  /// touched means follow the phone.
+  static ThemePreference _themeFromSettings(Map<String, Object?> settings) {
+    final stored = settings[_themeModeKey];
+
+    for (final preference in ThemePreference.values) {
+      if (preference.name == stored) {
+        return preference;
+      }
+    }
+
+    return switch (settings['darkMode']) {
+      true => ThemePreference.dark,
+      false => ThemePreference.light,
+      _ => ThemePreference.system,
+    };
+  }
+
+  /// The phone's language if the app speaks it, otherwise German.
+  String _languageFromDevice() {
+    final device = _deviceLanguage();
+    return AppStrings.supportedCodes.contains(device) ? device : 'de';
   }
 
   Future<bool> setHabitCompactView(bool value) async {
@@ -622,18 +659,26 @@ class LighthouseController extends ChangeNotifier {
     );
   }
 
+  /// Picking a language fixes it — from then on the phone's language no
+  /// longer matters, even if it is the same one right now.
   Future<bool> setLanguage(String code) async {
-    if (_languageCode == code || !AppStrings.supportedCodes.contains(code)) {
+    if (!AppStrings.supportedCodes.contains(code) ||
+        (_languageChosen && _languageCode == code)) {
       return false;
     }
 
     final previous = _languageCode;
+    final previousChosen = _languageChosen;
     _languageCode = code;
+    _languageChosen = true;
     notifyListeners();
 
     final saved = await _persist(
       () => _database.saveSetting('language', code),
-      rollback: () => _languageCode = previous,
+      rollback: () {
+        _languageCode = previous;
+        _languageChosen = previousChosen;
+      },
     );
     await _planReminders();
     return saved;
@@ -954,10 +999,11 @@ class LighthouseController extends ChangeNotifier {
     _goodThings.clear();
     _habits.clear();
     _completedHabitKeys.clear();
-    _darkMode = false;
+    _themePreference = ThemePreference.system;
     _userName = '';
     _habitCompactView = true;
-    _languageCode = 'de';
+    _languageCode = _languageFromDevice();
+    _languageChosen = false;
     _lastBackupAt = null;
     _backupReminderDismissedAt = null;
     _hasSafetyBackup = false;
@@ -1149,6 +1195,9 @@ class _SuggestionStatistics {
     );
   }
 }
+
+/// How the app picks light or dark.
+enum ThemePreference { system, light, dark }
 
 /// Where a shortcut or the app start wants to go.
 enum AppAction {

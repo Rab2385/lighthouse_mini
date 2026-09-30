@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../pages/lighthouse_shell.dart';
@@ -19,13 +20,13 @@ class _LighthouseAppState extends State<LighthouseApp> {
   late final ThemeData _lightTheme = _buildLightTheme();
   late final ThemeData _darkTheme = _buildDarkTheme();
 
-  late bool _darkMode;
+  late ThemePreference _themePreference;
   late Locale _locale;
 
   @override
   void initState() {
     super.initState();
-    _darkMode = widget.controller.darkMode;
+    _themePreference = widget.controller.themePreference;
     _locale = widget.controller.appLocale;
     widget.controller.addListener(_onControllerChanged);
   }
@@ -40,12 +41,12 @@ class _LighthouseAppState extends State<LighthouseApp> {
   /// Every other data change is handled by the pages' own listeners, so the
   /// root Navigator / Localizations are never torn down mid-interaction.
   void _onControllerChanged() {
-    final darkMode = widget.controller.darkMode;
+    final themePreference = widget.controller.themePreference;
     final locale = widget.controller.appLocale;
 
-    if (darkMode != _darkMode || locale != _locale) {
+    if (themePreference != _themePreference || locale != _locale) {
       setState(() {
-        _darkMode = darkMode;
+        _themePreference = themePreference;
         _locale = locale;
       });
     }
@@ -58,7 +59,17 @@ class _LighthouseAppState extends State<LighthouseApp> {
       debugShowCheckedModeBanner: false,
       theme: _lightTheme,
       darkTheme: _darkTheme,
-      themeMode: _darkMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: switch (_themePreference) {
+        ThemePreference.system => ThemeMode.system,
+        ThemePreference.light => ThemeMode.light,
+        ThemePreference.dark => ThemeMode.dark,
+      },
+      // Status and navigation bar follow the theme actually shown — phones
+      // have no AppBar that would otherwise set them.
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: _systemBarsFor(Theme.of(context)),
+        child: child!,
+      ),
       locale: _locale,
       supportedLocales: const [Locale('de'), Locale('en')],
       localizationsDelegates: const [
@@ -67,6 +78,21 @@ class _LighthouseAppState extends State<LighthouseApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       home: LighthouseShell(controller: widget.controller),
+    );
+  }
+
+  static SystemUiOverlayStyle _systemBarsFor(ThemeData theme) {
+    final dark = theme.brightness == Brightness.dark;
+    final base = dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
+
+    return base.copyWith(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor:
+          theme.navigationBarTheme.backgroundColor ??
+          theme.colorScheme.surfaceContainer,
+      systemNavigationBarIconBrightness: dark
+          ? Brightness.light
+          : Brightness.dark,
     );
   }
 
