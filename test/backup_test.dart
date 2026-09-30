@@ -11,6 +11,7 @@ import 'package:lighthouse_mini/state/lighthouse_controller.dart';
 Future<LighthouseController> _controller(String name) async {
   final controller = LighthouseController(
     LighthouseDatabase.withFactory(databaseFactoryMemory, name),
+    deviceLanguage: () => 'de',
   );
   await controller.initialize();
   return controller;

@@ -42,6 +42,7 @@ Future<LighthouseController> _controller(
   final controller = LighthouseController(
     LighthouseDatabase.withFactory(databaseFactoryMemory, name),
     reminders: scheduler,
+    deviceLanguage: () => 'de',
   );
   await controller.initialize();
   return controller;
