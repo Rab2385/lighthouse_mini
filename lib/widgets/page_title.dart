@@ -34,7 +34,10 @@ class PageTitle extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (compact)
+          // Only as wide as its content, so it can share a row with the
+          // month controls when a phone is held sideways.
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               const LighthouseMark(height: 22),
               const SizedBox(width: 8),

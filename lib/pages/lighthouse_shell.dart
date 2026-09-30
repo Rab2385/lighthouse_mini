@@ -172,82 +172,91 @@ class _LighthouseShellState extends State<LighthouseShell>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final showSidebar = constraints.maxWidth >= 850;
-
-        // A phone that's wide enough for the rail (i.e. held in landscape) gets
-        // an icon-only rail, not the 220px extended one — landscape needs the
+        // Any phone held sideways gets the rail, not just the wide ones: a
+        // bottom bar would eat a fifth of the little height there is. It is
+        // icon-only there, not the 220px extended one — landscape needs the
         // width for the habit grid, and its height for the rows.
         final isPhone = MediaQuery.sizeOf(context).shortestSide < 600;
+        final isLandscape = constraints.maxWidth > constraints.maxHeight;
+        final showSidebar =
+            constraints.maxWidth >= 850 || (isPhone && isLandscape);
         final extendedRail = showSidebar && !isPhone;
 
         if (showSidebar) {
           return Scaffold(
-            body: Row(
-              children: [
-                NavigationRail(
-                  extended: extendedRail,
-                  minExtendedWidth: 220,
-                  // Icons only when collapsed: keeps the rail narrow and, more
-                  // importantly, short enough to fit a landscape phone's height.
-                  labelType: extendedRail
-                      ? null
-                      : NavigationRailLabelType.none,
-                  // Belt-and-braces for very short heights / large text scale.
-                  scrollable: !extendedRail,
-
-                  // Good Things, Habits and Review use indexes 0–2.
-                  // Settings is opened through the separate bottom button.
-                  selectedIndex: _selectedIndex < 3 ? _selectedIndex : null,
-
-                  onDestinationSelected: _selectPage,
-
-                  // Keep the logo at the top and Settings at the bottom.
-                  leadingAtTop: true,
-                  trailingAtBottom: true,
-                  groupAlignment: -1,
-
-                  leading: extendedRail
-                      ? const Padding(
-                          padding: EdgeInsets.fromLTRB(16, 22, 16, 26),
-                          child: _LighthouseLogo(),
-                        )
-                      : const Padding(
-                          padding: EdgeInsets.fromLTRB(8, 12, 8, 12),
-                          child: LighthouseMark(height: 26),
-                        ),
-
-                  destinations: [
-                    NavigationRailDestination(
-                      icon: const Icon(Icons.auto_awesome_outlined),
-                      selectedIcon: const Icon(Icons.auto_awesome),
-                      label: Text(strings.goodThings),
-                    ),
-                    NavigationRailDestination(
-                      icon: const Icon(Icons.grid_view_outlined),
-                      selectedIcon: const Icon(Icons.grid_view),
-                      label: Text(strings.habits),
-                    ),
-                    NavigationRailDestination(
-                      icon: const Icon(Icons.insights_outlined),
-                      selectedIcon: const Icon(Icons.insights),
-                      label: Text(strings.review),
-                    ),
-                  ],
-
-                  trailing: _SidebarSettingsButton(
-                    label: strings.settings,
-                    selected: _selectedIndex == 3,
+            // Keeps the rail clear of a notch or camera cut-out when the
+            // phone is held sideways.
+            body: SafeArea(
+              child: Row(
+                children: [
+                  NavigationRail(
                     extended: extendedRail,
-                    onPressed: () {
-                      _selectPage(3);
-                    },
+                    minExtendedWidth: 220,
+                    // Icons only when collapsed: keeps the rail narrow and, more
+                    // importantly, short enough to fit a landscape phone's height.
+                    labelType: extendedRail
+                        ? null
+                        : NavigationRailLabelType.none,
+                    // Belt-and-braces for very short heights / large text scale.
+                    scrollable: !extendedRail,
+
+                    // Good Things, Habits and Review use indexes 0–2.
+                    // Settings is opened through the separate bottom button.
+                    selectedIndex: _selectedIndex < 3 ? _selectedIndex : null,
+
+                    onDestinationSelected: _selectPage,
+
+                    // Keep the logo at the top and Settings at the bottom.
+                    leadingAtTop: true,
+                    trailingAtBottom: true,
+                    groupAlignment: -1,
+
+                    leading: extendedRail
+                        ? const Padding(
+                            padding: EdgeInsets.fromLTRB(16, 22, 16, 26),
+                            child: _LighthouseLogo(),
+                          )
+                        : const Padding(
+                            padding: EdgeInsets.fromLTRB(8, 12, 8, 12),
+                            child: LighthouseMark(height: 26),
+                          ),
+
+                    destinations: [
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        selectedIcon: const Icon(Icons.auto_awesome),
+                        label: Text(strings.goodThings),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.grid_view_outlined),
+                        selectedIcon: const Icon(Icons.grid_view),
+                        label: Text(strings.habits),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.insights_outlined),
+                        selectedIcon: const Icon(Icons.insights),
+                        label: Text(strings.review),
+                      ),
+                    ],
+
+                    trailing: _SidebarSettingsButton(
+                      label: strings.settings,
+                      selected: _selectedIndex == 3,
+                      extended: extendedRail,
+                      onPressed: () {
+                        _selectPage(3);
+                      },
+                    ),
                   ),
-                ),
-                const VerticalDivider(width: 1, thickness: 1),
-                Expanded(
-                  child: IndexedStack(index: _selectedIndex, children: _pages),
-                ),
-              ],
+                  const VerticalDivider(width: 1, thickness: 1),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _selectedIndex,
+                      children: _pages,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }

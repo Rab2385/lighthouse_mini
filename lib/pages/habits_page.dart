@@ -356,13 +356,22 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                       icon: const Icon(Icons.archive_outlined),
                       label: Text(strings.archiveButton),
                     ),
-                  FilledButton.icon(
-                    onPressed: () {
-                      _showHabitDialog();
-                    },
-                    icon: const Icon(Icons.add),
-                    label: Text(strings.habitButton),
-                  ),
+                  // Sideways on a phone the header is a single row — keep
+                  // it there with an icon-only button.
+                  if (forceGrid)
+                    IconButton.filled(
+                      tooltip: strings.addHabit,
+                      onPressed: _showHabitDialog,
+                      icon: const Icon(Icons.add),
+                    )
+                  else
+                    FilledButton.icon(
+                      onPressed: () {
+                        _showHabitDialog();
+                      },
+                      icon: const Icon(Icons.add),
+                      label: Text(strings.habitButton),
+                    ),
                 ],
               ),
             ),
@@ -462,10 +471,10 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                             width: daysInMonth * cellWidth,
                             height: bodyHeight,
                             child: _MonthGridColumn(
-                            habits: habits,
-                            controller: widget.controller,
-                            selectedMonth: _selectedMonth,
-                            daysInMonth: daysInMonth,
+                              habits: habits,
+                              controller: widget.controller,
+                              selectedMonth: _selectedMonth,
+                              daysInMonth: daysInMonth,
                               todayDay: todayDay,
                               cellWidth: cellWidth,
                             ),
@@ -761,7 +770,11 @@ class _CompactToggle extends StatelessWidget {
                     ),
                   ),
                   child: completed
-                      ? Icon(Icons.check, size: 16, color: colorScheme.onPrimary)
+                      ? Icon(
+                          Icons.check,
+                          size: 16,
+                          color: colorScheme.onPrimary,
+                        )
                       : null,
                 ),
               ],
@@ -814,23 +827,32 @@ class _FrozenHabitColumn extends StatelessWidget {
   }) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: isToday ? colorScheme.primary : colorScheme.onSurfaceVariant,
+    // The pinned columns are only ~44 px wide: shrink rather than wrap onto
+    // a second line (which overflows the header, e.g. at large text sizes).
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isToday
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '${controller.strings.weekdaysShort[date.weekday - 1]}. ${date.day}.',
-          style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
-        ),
-      ],
+          const SizedBox(height: 2),
+          Text(
+            '${controller.strings.weekdaysShort[date.weekday - 1]}. ${date.day}.',
+            maxLines: 1,
+            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
 
