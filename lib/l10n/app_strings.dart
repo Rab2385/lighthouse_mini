@@ -192,6 +192,16 @@ class AppStrings {
   String get greetingEvening => _p('Guten Abend', 'Good evening');
   String get greetingNight => _p('Gute Nacht', 'Good night');
 
+  // ---- Review: Good Things ------------------------------------------
+  String get copyAsText => _p('Als Text kopieren', 'Copy as text');
+  String get copied => _p('Kopiert.', 'Copied.');
+  String get noGoodThingsInRange => _p(
+    'Noch keine Good Things in diesem Zeitraum.',
+    'No Good Things in this period yet.',
+  );
+  String showAll(int n) => _p('Alle $n anzeigen', 'Show all $n');
+  String get showLess => _p('Weniger anzeigen', 'Show less');
+
   // ---- Backup ------------------------------------------------------
   String get backup => 'Backup';
   String get backupText => _p(
@@ -312,6 +322,15 @@ class AppStrings {
   List<String> get weekdaysShort => _en
       ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       : const ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+  /// "Di., 29.09." / "Tue, 09/29" — a day without its year.
+  String dayLabel(DateTime date) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    final weekday = weekdaysShort[date.weekday - 1];
+    return _en
+        ? '$weekday, ${two(date.month)}/${two(date.day)}'
+        : '$weekday., ${two(date.day)}.${two(date.month)}.';
+  }
 
   String formatDate(DateTime date) {
     String two(int v) => v.toString().padLeft(2, '0');
