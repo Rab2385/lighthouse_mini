@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter/widgets.dart' show Locale;
 
+import '../data/backup.dart';
 import '../data/lighthouse_database.dart';
 import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
@@ -17,6 +18,17 @@ class LighthouseController extends ChangeNotifier {
   /// Settings key marking that the starter habits were created once, so an
   /// intentionally empty habit list stays empty on the next launch.
   static const String _defaultHabitsSeededKey = 'defaultHabitsSeeded';
+
+  static const String _lastBackupAtKey = 'lastBackupAt';
+  static const String _backupReminderDismissedAtKey =
+      'backupReminderDismissedAt';
+
+  /// Settings that describe this device's backup history rather than the
+  /// user's data, so they are not written into backup files.
+  static const Set<String> _deviceOnlySettings = {
+    _lastBackupAtKey,
+    _backupReminderDismissedAtKey,
+  };
 
   final LighthouseDatabase _database;
 
@@ -36,6 +48,9 @@ class LighthouseController extends ChangeNotifier {
   bool _habitCompactView = true;
   String _languageCode = 'de';
   int _idCounter = 0;
+  DateTime? _lastBackupAt;
+  DateTime? _backupReminderDismissedAt;
+  bool _hasSafetyBackup = false;
 
   bool get darkMode => _darkMode;
   String get userName => _userName;
@@ -120,6 +135,11 @@ class LighthouseController extends ChangeNotifier {
     _darkMode = settings['darkMode'] as bool? ?? false;
     _userName = (settings['userName'] as String? ?? '').trim();
     _habitCompactView = settings['habitCompactView'] as bool? ?? true;
+    _lastBackupAt = _parseDate(settings[_lastBackupAtKey]);
+    _backupReminderDismissedAt = _parseDate(
+      settings[_backupReminderDismissedAtKey],
+    );
+    _hasSafetyBackup = await _database.loadSafetyBackup() != null;
 
     final storedLanguage = settings['language'] as String?;
     _languageCode = AppStrings.supportedCodes.contains(storedLanguage)
@@ -590,6 +610,131 @@ class LighthouseController extends ChangeNotifier {
     );
   }
 
+  // ---- Backup ---------------------------------------------------------------
+
+  /// When a backup file was last saved on this device (or the date of the
+  /// backup that was restored).
+  DateTime? get lastBackupAt => _lastBackupAt;
+
+  /// Whether the data from before the last restore can be brought back.
+  bool get hasSafetyBackup => _hasSafetyBackup;
+
+  /// The gentle "save a backup" banner on Good Things.
+  bool get showBackupReminder => shouldRemindAboutBackup(
+    now: DateTime.now(),
+    lastBackupAt: _lastBackupAt,
+    firstEntryAt: _firstEntryAt,
+    dismissedAt: _backupReminderDismissedAt,
+  );
+
+  /// When the user's own data started: the first Good Thing, or — for
+  /// habits-only use — the habits, once any day has been marked.
+  DateTime? get _firstEntryAt {
+    DateTime? first;
+
+    for (final entry in _goodThings) {
+      if (first == null || entry.createdAt.isBefore(first)) {
+        first = entry.createdAt;
+      }
+    }
+
+    if (first == null && _completedHabitKeys.isNotEmpty) {
+      for (final habit in _habits) {
+        if (first == null || habit.createdAt.isBefore(first)) {
+          first = habit.createdAt;
+        }
+      }
+    }
+
+    return first;
+  }
+
+  /// A snapshot of everything stored, ready to be written to a file.
+  Future<Backup> createBackup() async {
+    final data = await _database.exportData();
+
+    return Backup(
+      createdAt: DateTime.now(),
+      appVersion: kAppVersion,
+      data: BackupData(
+        goodThings: data.goodThings,
+        habits: data.habits,
+        habitEntries: data.habitEntries,
+        settings: {
+          for (final setting in data.settings.entries)
+            if (!_deviceOnlySettings.contains(setting.key))
+              setting.key: setting.value,
+        },
+      ),
+    );
+  }
+
+  /// Call once the file was actually written.
+  Future<void> markBackupSaved(DateTime at) async {
+    _lastBackupAt = at;
+    notifyListeners();
+    await _database.saveSetting(_lastBackupAtKey, at.toIso8601String());
+  }
+
+  Future<void> dismissBackupReminder() async {
+    final now = DateTime.now();
+    _backupReminderDismissedAt = now;
+    notifyListeners();
+    await _database.saveSetting(
+      _backupReminderDismissedAtKey,
+      now.toIso8601String(),
+    );
+  }
+
+  /// Replaces all data with [backup]. The current data is kept as a safety
+  /// backup first, so [undoRestore] can bring it back. Throws if storage
+  /// fails; the replace itself is all-or-nothing.
+  Future<void> restoreBackup(Backup backup) async {
+    final current = await createBackup();
+    await _database.saveSafetyBackup(current.encode());
+
+    await _database.replaceAllData(
+      BackupData(
+        goodThings: backup.data.goodThings,
+        habits: backup.data.habits,
+        habitEntries: backup.data.habitEntries,
+        settings: {
+          for (final setting in backup.data.settings.entries)
+            if (!_deviceOnlySettings.contains(setting.key) &&
+                setting.value != null)
+              setting.key: setting.value,
+          // The restored data is exactly what that backup holds.
+          _lastBackupAtKey: backup.createdAt.toIso8601String(),
+        },
+      ),
+    );
+
+    await initialize();
+  }
+
+  /// Brings back the data as it was right before the last restore.
+  Future<void> undoRestore() async {
+    final encoded = await _database.loadSafetyBackup();
+
+    if (encoded == null) {
+      return;
+    }
+
+    final previous = Backup.decode(encoded);
+    final lastBackupAt = _lastBackupAt;
+
+    await _database.replaceAllData(previous.data);
+    if (lastBackupAt != null) {
+      await _database.saveSetting(
+        _lastBackupAtKey,
+        lastBackupAt.toIso8601String(),
+      );
+    }
+    await _database.deleteSafetyBackup();
+
+    await initialize();
+  }
+
   Future<bool> clearAllData() async {
     try {
       await _database.clearAllData();
@@ -605,6 +750,9 @@ class LighthouseController extends ChangeNotifier {
     _userName = '';
     _habitCompactView = true;
     _languageCode = 'de';
+    _lastBackupAt = null;
+    _backupReminderDismissedAt = null;
+    _hasSafetyBackup = false;
 
     await _createDefaultHabits();
     notifyListeners();
@@ -747,6 +895,10 @@ class LighthouseController extends ChangeNotifier {
     final day = date.day.toString().padLeft(2, '0');
 
     return '$year-$month-$day';
+  }
+
+  static DateTime? _parseDate(Object? value) {
+    return value is String ? DateTime.tryParse(value) : null;
   }
 
   DateTime _dateOnly(DateTime date) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
 import '../state/lighthouse_controller.dart';
+import '../widgets/backup_card.dart';
 import '../widgets/page_title.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -143,6 +144,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle: strings.settingsSubtitle,
                     ),
                     const SizedBox(height: 22),
+
+                    BackupCard(controller: widget.controller),
+                    const SizedBox(height: 16),
 
                     sectionCard(
                       title: strings.language,

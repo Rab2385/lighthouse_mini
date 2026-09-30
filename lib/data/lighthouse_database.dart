@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sembast/sembast.dart';
 
 import '../models/good_thing.dart';
+import 'backup.dart';
 import '../models/habit.dart';
 import 'database_open.dart';
 
@@ -30,6 +31,14 @@ class LighthouseDatabase {
   final StoreRef<String, Object?> _settingsStore = StoreRef<String, Object?>(
     'settings',
   );
+
+  /// Holds the encoded backup of the data as it was right before the last
+  /// restore, so a restore can always be undone.
+  final StoreRef<String, String> _safetyStore = StoreRef<String, String>(
+    'safety_backup',
+  );
+
+  static const String _safetyKey = 'beforeRestore';
 
   Database? _database;
 
@@ -146,6 +155,87 @@ class LighthouseDatabase {
       await _habitsStore.delete(transaction);
       await _habitEntriesStore.delete(transaction);
       await _settingsStore.delete(transaction);
+      await _safetyStore.delete(transaction);
     });
+  }
+
+  /// Every stored record, for a backup file.
+  Future<BackupData> exportData() async {
+    final database = await _db;
+
+    return database.transaction((transaction) async {
+      final goodThings = await _goodThingsStore.find(transaction);
+      final habits = await _habitsStore.find(transaction);
+      final entries = await _habitEntriesStore.find(transaction);
+      final settings = await _settingsStore.find(transaction);
+
+      return BackupData(
+        goodThings: [for (final r in goodThings) Map.of(r.value)],
+        habits: [for (final r in habits) Map.of(r.value)],
+        habitEntries: [
+          for (final r in entries)
+            {
+              'key': r.key,
+              'habitId': r.value['habitId'],
+              'date': r.value['date'],
+            },
+        ],
+        settings: {for (final r in settings) r.key: r.value},
+      );
+    });
+  }
+
+  /// Swaps all data for [data] in a single transaction — either everything is
+  /// replaced or, if anything fails, nothing is.
+  Future<void> replaceAllData(BackupData data) async {
+    final database = await _db;
+
+    await database.transaction((transaction) async {
+      await _goodThingsStore.delete(transaction);
+      await _habitsStore.delete(transaction);
+      await _habitEntriesStore.delete(transaction);
+      await _settingsStore.delete(transaction);
+
+      for (final record in data.goodThings) {
+        await _goodThingsStore
+            .record(record['id']! as String)
+            .put(transaction, record);
+      }
+      for (final record in data.habits) {
+        await _habitsStore
+            .record(record['id']! as String)
+            .put(transaction, record);
+      }
+      for (final entry in data.habitEntries) {
+        await _habitEntriesStore.record(entry['key']! as String).put(
+          transaction,
+          {
+            'habitId': entry['habitId'],
+            'date': entry['date'],
+            'completed': true,
+          },
+        );
+      }
+      for (final setting in data.settings.entries) {
+        await _settingsStore
+            .record(setting.key)
+            .put(transaction, setting.value);
+      }
+    });
+  }
+
+  Future<void> saveSafetyBackup(String encoded) async {
+    final database = await _db;
+    await _safetyStore.record(_safetyKey).put(database, encoded);
+  }
+
+  Future<String?> loadSafetyBackup() async {
+    final database = await _db;
+    return _safetyStore.record(_safetyKey).get(database);
+  }
+
+  Future<void> deleteSafetyBackup() async {
+    final database = await _db;
+    await _safetyStore.record(_safetyKey).delete(database);
   }
 }

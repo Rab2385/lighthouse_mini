@@ -79,11 +79,11 @@ Future `Ahead` entries are limited to one calendar month from the current date.
 
 The next priority is protecting the user’s data.
 
-- [ ] Export all data as a backup file
-- [ ] Import an existing backup
-- [ ] Add a backup format version
-- [ ] Validate backup files before importing
-- [ ] Show backup creation date and app version
-- [ ] Warn before replacing existing data
-- [ ] Create a safety backup before importing
-- [ ] Add a reminder explaining that browser data can be deleted
+- [x] Export all data as a backup file
+- [x] Import an existing backup
+- [x] Add a backup format version
+- [x] Validate backup files before importing
+- [x] Show backup creation date and app version
+- [x] Warn before replacing existing data
+- [x] Create a safety backup before importing
+- [x] Add a reminder explaining that browser data can be deleted
