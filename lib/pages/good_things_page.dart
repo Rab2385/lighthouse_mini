@@ -9,6 +9,7 @@ import '../state/lighthouse_controller.dart';
 import '../util/resume_policy.dart';
 import '../widgets/backup_card.dart';
 import '../widgets/month_header.dart';
+import '../widgets/page_title.dart';
 
 class GoodThingsPage extends StatefulWidget {
   const GoodThingsPage({super.key, required this.controller});
@@ -32,6 +33,10 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
   /// Today's quick-entry field, focused when the app opens into typing.
   final FocusNode _todayFieldFocus = FocusNode();
+
+  /// A day other than today whose input field the user opened with ＋.
+  /// Only today and this day show a field — the rest stay compact.
+  DateTime? _openDay;
 
   /// Focus [_todayFieldFocus] once today's card has been scrolled to.
   bool _focusTodayWhenVisible = false;
@@ -195,7 +200,8 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       return;
     }
 
-    const estimatedCardExtent = 145.0;
+    // Most days are compact one-liners now; the refine step handles the rest.
+    const estimatedCardExtent = 72.0;
     final targetDay = _targetDay.day;
     final position = _monthScrollController.position;
     final target = ((targetDay - 2 + attempt * 3) * estimatedCardExtent).clamp(
@@ -216,18 +222,23 @@ class _GoodThingsPageState extends State<GoodThingsPage>
   }
 
   Future<void> _editEntry(GoodThing entry) async {
-    final newText = await showDialog<String>(
+    final result = await showDialog<Object>(
       context: context,
       builder: (dialogContext) {
         return _EditEntryDialog(initialText: entry.text, strings: _strings);
       },
     );
 
-    if (newText == null) {
-      return;
+    if (result == _EditEntryDialog.delete) {
+      await _deleteEntry(entry);
+    } else if (result is String) {
+      await widget.controller.updateGoodThing(id: entry.id, text: result);
     }
+  }
 
-    await widget.controller.updateGoodThing(id: entry.id, text: newText);
+  /// Opens [date]'s input field (closing any other); its field takes focus.
+  void _openDayField(DateTime date) {
+    setState(() => _openDay = date);
   }
 
   Future<void> _deleteEntry(GoodThing entry) async {
@@ -375,6 +386,8 @@ class _GoodThingsPageState extends State<GoodThingsPage>
     final date = DateTime(_selectedMonth.year, _selectedMonth.month, day);
 
     final isTarget = _isViewingTargetMonth && day == _targetDay.day;
+    final isToday = DateUtils.isSameDay(date, widget.controller.today);
+    final isOpenDay = DateUtils.isSameDay(date, _openDay);
 
     return _GoodThingsDayCard(
       key: isTarget
@@ -388,9 +401,10 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       controller: widget.controller,
       onEdit: _editEntry,
       onDelete: _deleteEntry,
-      fieldFocusNode: DateUtils.isSameDay(date, widget.controller.today)
-          ? _todayFieldFocus
-          : null,
+      open: isToday || isOpenDay,
+      onOpen: () => _openDayField(date),
+      autofocusField: isOpenDay && !isToday,
+      fieldFocusNode: isToday ? _todayFieldFocus : null,
     );
   }
 }
@@ -399,6 +413,9 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 /// never synchronously while the pop transition is still running.
 class _EditEntryDialog extends StatefulWidget {
   const _EditEntryDialog({required this.initialText, required this.strings});
+
+  /// Popped instead of the edited text when the user chose "Löschen".
+  static const Object delete = #delete;
 
   final String initialText;
   final AppStrings strings;
@@ -442,6 +459,14 @@ class _EditEntryDialogState extends State<_EditEntryDialog> {
         ),
       ),
       actions: [
+        // Deleting is also reachable here, not only by swiping.
+        TextButton(
+          onPressed: () => Navigator.pop(context, _EditEntryDialog.delete),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          child: Text(widget.strings.delete),
+        ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text(widget.strings.cancel),
@@ -547,6 +572,9 @@ class _GoodThingsDayCard extends StatelessWidget {
     required this.controller,
     required this.onEdit,
     required this.onDelete,
+    required this.open,
+    required this.onOpen,
+    this.autofocusField = false,
     this.fieldFocusNode,
   });
 
@@ -562,6 +590,15 @@ class _GoodThingsDayCard extends StatelessWidget {
   /// Given for today's card, so the page can focus its field.
   final FocusNode? fieldFocusNode;
 
+  /// Open days show their input field; the others are compact.
+  final bool open;
+
+  /// ＋ on a compact day.
+  final VoidCallback onOpen;
+
+  /// The field of a day the user just opened takes focus right away.
+  final bool autofocusField;
+
   bool get _isToday {
     final today = controller.today;
 
@@ -574,8 +611,102 @@ class _GoodThingsDayCard extends StatelessWidget {
     return date.isAfter(controller.today);
   }
 
+  String _status(AppStrings strings) {
+    return _isToday
+        ? strings.statusToday
+        : _isFuture
+        ? strings.statusAhead
+        : strings.statusGood;
+  }
+
+  /// A closed day: a single line when empty, its entries below when not.
+  Widget _buildCompact(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final strings = controller.strings;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.fromLTRB(16, 4, 4, entries.isEmpty ? 4 : 10),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 36,
+                child: Text(
+                  date.day.toString().padLeft(2, '0'),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: weekdayName,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    children: [
+                      TextSpan(
+                        text: ' · ${_status(strings)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (canAdd)
+                IconButton(
+                  tooltip: strings.addEntry,
+                  onPressed: onOpen,
+                  icon: const Icon(Icons.add),
+                )
+              else
+                // Past the one-month Ahead window: say why there's no ＋.
+                Tooltip(
+                  message: strings.aheadEntriesUntil(
+                    strings.formatDate(maximumFutureDate),
+                  ),
+                  child: const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Icon(Icons.lock_clock_outlined, size: 18),
+                  ),
+                ),
+            ],
+          ),
+          for (final entry in entries)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(36, 0, 12, 6),
+              child: _SavedGoodThingLine(
+                entry: entry,
+                onEdit: () => onEdit(entry),
+                onDelete: () => onDelete(entry),
+                strings: strings,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!open) {
+      return _buildCompact(context);
+    }
+
     final colorScheme = Theme.of(context).colorScheme;
     final strings = controller.strings;
 
@@ -622,11 +753,7 @@ class _GoodThingsDayCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _isToday
-                              ? strings.statusToday
-                              : _isFuture
-                              ? strings.statusAhead
-                              : strings.statusGood,
+                          _status(strings),
                           style: TextStyle(
                             fontSize: 12,
                             color: colorScheme.primary,
@@ -657,6 +784,7 @@ class _GoodThingsDayCard extends StatelessWidget {
                   date: date,
                   controller: controller,
                   focusNode: fieldFocusNode,
+                  autofocus: autofocusField,
                 )
               else
                 _FutureLimitMessage(
@@ -704,35 +832,68 @@ class _SavedGoodThingLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Material(
+    // Phones: tap to edit, swipe left to delete — the text gets the full
+    // width. Larger screens keep the explicit buttons.
+    final phone = isPhoneLayout(context);
+
+    final line = Material(
       color: colorScheme.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onEdit,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
+          width: double.infinity,
+          padding: phone
+              ? const EdgeInsets.symmetric(horizontal: 14, vertical: 12)
+              : const EdgeInsets.fromLTRB(14, 8, 4, 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: colorScheme.outlineVariant),
           ),
-          child: Row(
-            children: [
-              Expanded(child: Text(entry.text)),
-              IconButton(
-                tooltip: strings.edit,
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined, size: 19),
-              ),
-              IconButton(
-                tooltip: strings.delete,
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline, size: 19),
-              ),
-            ],
-          ),
+          child: phone
+              ? Text(entry.text)
+              : Row(
+                  children: [
+                    Expanded(child: Text(entry.text)),
+                    IconButton(
+                      tooltip: strings.edit,
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 19),
+                    ),
+                    IconButton(
+                      tooltip: strings.delete,
+                      onPressed: onDelete,
+                      icon: const Icon(Icons.delete_outline, size: 19),
+                    ),
+                  ],
+                ),
         ),
       ),
+    );
+
+    if (!phone) {
+      return line;
+    }
+
+    return Dismissible(
+      key: ValueKey('dismiss-${entry.id}'),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 18),
+        decoration: BoxDecoration(
+          color: colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          Icons.delete_outline,
+          color: colorScheme.onErrorContainer,
+          semanticLabel: strings.delete,
+        ),
+      ),
+      child: line,
     );
   }
 }
@@ -742,6 +903,7 @@ class _QuickEntryField extends StatefulWidget {
     required this.date,
     required this.controller,
     this.focusNode,
+    this.autofocus = false,
   });
 
   final DateTime date;
@@ -749,6 +911,8 @@ class _QuickEntryField extends StatefulWidget {
 
   /// Owned by the caller when given; otherwise the field makes its own.
   final FocusNode? focusNode;
+
+  final bool autofocus;
 
   @override
   State<_QuickEntryField> createState() => _QuickEntryFieldState();
@@ -791,6 +955,18 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
     setState(() {
       _hasFocus = _focusNode.hasFocus;
     });
+  }
+
+  /// Short and day-specific, so it fits on one line on a phone.
+  String get _hint {
+    final strings = widget.controller.strings;
+    final today = widget.controller.today;
+
+    if (DateUtils.isSameDay(widget.date, today)) {
+      return strings.hintToday;
+    }
+
+    return widget.date.isAfter(today) ? strings.hintAhead : strings.hintPast;
   }
 
   Future<void> _submit() async {
@@ -873,6 +1049,7 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
         TextField(
           controller: _textController,
           focusNode: _focusNode,
+          autofocus: widget.autofocus,
           minLines: 1,
           maxLines: 4,
           textInputAction: TextInputAction.done,
@@ -883,7 +1060,8 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
           },
           onSubmitted: (_) => _submit(),
           decoration: InputDecoration(
-            hintText: widget.controller.strings.writeSomethingGood,
+            hintText: _hint,
+            hintMaxLines: 1,
             prefixIcon: const Icon(Icons.add),
             suffixIcon: _isSaving
                 ? const Padding(
