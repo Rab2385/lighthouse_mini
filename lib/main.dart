@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app/lighthouse_app.dart';
 import 'data/lighthouse_database.dart';
@@ -7,6 +9,7 @@ import 'state/lighthouse_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _registerFontLicenses();
 
   final database = LighthouseDatabase();
   final controller = LighthouseController(
@@ -23,6 +26,19 @@ Future<void> main() async {
   }
 
   runApp(LighthouseApp(controller: controller));
+}
+
+/// The bundled fonts are OFL-licensed; list them on the licenses page.
+void _registerFontLicenses() {
+  LicenseRegistry.addLicense(() async* {
+    for (final (packages, file) in [
+      (['Roboto'], 'Roboto-OFL.txt'),
+      (['Noto Color Emoji (LighthouseEmoji)'], 'LighthouseEmoji-OFL.txt'),
+    ]) {
+      final text = await rootBundle.loadString('assets/fonts/$file');
+      yield LicenseEntryWithLineBreaks(packages, text);
+    }
+  });
 }
 
 class _StartupErrorApp extends StatelessWidget {
