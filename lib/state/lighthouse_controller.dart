@@ -19,6 +19,7 @@ class LighthouseController extends ChangeNotifier {
   /// intentionally empty habit list stays empty on the next launch.
   static const String _defaultHabitsSeededKey = 'defaultHabitsSeeded';
 
+  static const String _quickEntryOnOpenKey = 'quickEntryOnOpen';
   static const String _showMemoriesKey = 'showMemories';
   static const String _memoryDismissedOnKey = 'memoryDismissedOn';
 
@@ -39,6 +40,13 @@ class LighthouseController extends ChangeNotifier {
   final StreamController<Object> _saveErrors =
       StreamController<Object>.broadcast();
 
+  final StreamController<AppAction> _actions =
+      StreamController<AppAction>.broadcast();
+
+  /// Requests to jump somewhere — from a home-screen shortcut or from
+  /// opening the app — for the shell and the pages to act on.
+  Stream<AppAction> get actions => _actions.stream;
+
   /// Emits whenever a change could not be written to local storage. The
   /// in-memory change has already been rolled back by then.
   Stream<Object> get saveErrors => _saveErrors.stream;
@@ -56,6 +64,7 @@ class LighthouseController extends ChangeNotifier {
   DateTime? _backupReminderDismissedAt;
   bool _hasSafetyBackup = false;
   bool _showMemories = true;
+  bool _quickEntryOnOpen = true;
   String? _memoryDismissedOn;
 
   bool get darkMode => _darkMode;
@@ -147,6 +156,7 @@ class LighthouseController extends ChangeNotifier {
     );
     _hasSafetyBackup = await _database.loadSafetyBackup() != null;
     _showMemories = settings[_showMemoriesKey] as bool? ?? true;
+    _quickEntryOnOpen = settings[_quickEntryOnOpenKey] as bool? ?? true;
     _memoryDismissedOn = settings[_memoryDismissedOnKey] as String?;
 
     final storedLanguage = settings['language'] as String?;
@@ -175,6 +185,7 @@ class LighthouseController extends ChangeNotifier {
   @override
   void dispose() {
     _saveErrors.close();
+    _actions.close();
     super.dispose();
   }
 
@@ -618,6 +629,37 @@ class LighthouseController extends ChangeNotifier {
     );
   }
 
+  // ---- Quick entry ----------------------------------------------------------
+
+  /// Whether opening the app on a phone goes straight to today's field.
+  bool get quickEntryOnOpen => _quickEntryOnOpen;
+
+  /// Open straight into typing — only while today is still empty, so opening
+  /// the app to read never pops up a keyboard.
+  bool get shouldStartWithQuickEntry =>
+      _quickEntryOnOpen && goodThingsForDate(today).isEmpty;
+
+  void requestAction(AppAction action) {
+    if (!_actions.isClosed) {
+      _actions.add(action);
+    }
+  }
+
+  Future<bool> setQuickEntryOnOpen(bool value) async {
+    if (_quickEntryOnOpen == value) {
+      return false;
+    }
+
+    final previous = _quickEntryOnOpen;
+    _quickEntryOnOpen = value;
+    notifyListeners();
+
+    return _persist(
+      () => _database.saveSetting(_quickEntryOnOpenKey, value),
+      rollback: () => _quickEntryOnOpen = previous,
+    );
+  }
+
   // ---- Memories -------------------------------------------------------------
 
   /// Whether Good Things shows "Heute vor einem Jahr / Monat".
@@ -828,6 +870,7 @@ class LighthouseController extends ChangeNotifier {
     _hasSafetyBackup = false;
     _showMemories = true;
     _memoryDismissedOn = null;
+    _quickEntryOnOpen = true;
 
     await _createDefaultHabits();
     notifyListeners();
@@ -1008,6 +1051,30 @@ class _SuggestionStatistics {
       count: count ?? this.count,
       lastUsed: lastUsed ?? this.lastUsed,
     );
+  }
+}
+
+/// Where a shortcut or the app start wants to go.
+enum AppAction {
+  /// Good Things, today's field focused.
+  addGoodThing,
+
+  /// The Habits tab.
+  habits;
+
+  /// The id used in shortcuts (`?action=add`, quick action types).
+  String get id => switch (this) {
+    AppAction.addGoodThing => 'add',
+    AppAction.habits => 'habits',
+  };
+
+  static AppAction? fromId(String? id) {
+    for (final action in values) {
+      if (action.id == id) {
+        return action;
+      }
+    }
+    return null;
   }
 }
 

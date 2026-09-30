@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
@@ -28,6 +30,14 @@ class _GoodThingsPageState extends State<GoodThingsPage>
   final GlobalKey _targetCardKey = GlobalKey();
   late DateTime _targetDay;
 
+  /// Today's quick-entry field, focused when the app opens into typing.
+  final FocusNode _todayFieldFocus = FocusNode();
+
+  /// Focus [_todayFieldFocus] once today's card has been scrolled to.
+  bool _focusTodayWhenVisible = false;
+
+  late final StreamSubscription<AppAction> _actionSubscription;
+
   String _searchQuery = '';
   bool _searchOpen = false;
 
@@ -44,12 +54,21 @@ class _GoodThingsPageState extends State<GoodThingsPage>
     _selectedMonth = DateTime(today.year, today.month);
     _targetDay = today;
 
+    _actionSubscription = widget.controller.actions.listen((action) {
+      if (action == AppAction.addGoodThing) {
+        _focusTodayWhenVisible = true;
+        _goToToday();
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToTarget());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _actionSubscription.cancel();
+    _todayFieldFocus.dispose();
     _searchController.dispose();
     _monthScrollController.dispose();
     super.dispose();
@@ -154,12 +173,21 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
     final cardContext = _targetCardKey.currentContext;
     if (cardContext != null) {
+      final focusToday =
+          _focusTodayWhenVisible &&
+          DateUtils.isSameDay(_targetDay, widget.controller.today);
+      _focusTodayWhenVisible = false;
+
       Scrollable.ensureVisible(
         cardContext,
         alignment: 0.06,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-      );
+      ).then((_) {
+        if (focusToday && mounted) {
+          _todayFieldFocus.requestFocus();
+        }
+      });
       return;
     }
 
@@ -360,6 +388,9 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       controller: widget.controller,
       onEdit: _editEntry,
       onDelete: _deleteEntry,
+      fieldFocusNode: DateUtils.isSameDay(date, widget.controller.today)
+          ? _todayFieldFocus
+          : null,
     );
   }
 }
@@ -516,6 +547,7 @@ class _GoodThingsDayCard extends StatelessWidget {
     required this.controller,
     required this.onEdit,
     required this.onDelete,
+    this.fieldFocusNode,
   });
 
   final DateTime date;
@@ -526,6 +558,9 @@ class _GoodThingsDayCard extends StatelessWidget {
   final LighthouseController controller;
   final Future<void> Function(GoodThing entry) onEdit;
   final Future<void> Function(GoodThing entry) onDelete;
+
+  /// Given for today's card, so the page can focus its field.
+  final FocusNode? fieldFocusNode;
 
   bool get _isToday {
     final today = controller.today;
@@ -618,7 +653,11 @@ class _GoodThingsDayCard extends StatelessWidget {
                   ),
                 ),
               if (canAdd)
-                _QuickEntryField(date: date, controller: controller)
+                _QuickEntryField(
+                  date: date,
+                  controller: controller,
+                  focusNode: fieldFocusNode,
+                )
               else
                 _FutureLimitMessage(
                   maximumFutureDate: maximumFutureDate,
@@ -699,10 +738,17 @@ class _SavedGoodThingLine extends StatelessWidget {
 }
 
 class _QuickEntryField extends StatefulWidget {
-  const _QuickEntryField({required this.date, required this.controller});
+  const _QuickEntryField({
+    required this.date,
+    required this.controller,
+    this.focusNode,
+  });
 
   final DateTime date;
   final LighthouseController controller;
+
+  /// Owned by the caller when given; otherwise the field makes its own.
+  final FocusNode? focusNode;
 
   @override
   State<_QuickEntryField> createState() => _QuickEntryFieldState();
@@ -711,7 +757,10 @@ class _QuickEntryField extends StatefulWidget {
 class _QuickEntryFieldState extends State<_QuickEntryField> {
   final TextEditingController _textController = TextEditingController();
 
-  final FocusNode _focusNode = FocusNode();
+  FocusNode? _ownFocusNode;
+
+  FocusNode get _focusNode =>
+      widget.focusNode ?? (_ownFocusNode ??= FocusNode());
 
   bool _isSaving = false;
   bool _hasFocus = false;
@@ -721,14 +770,26 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
   void initState() {
     super.initState();
 
-    _focusNode.addListener(() {
-      if (!mounted) {
-        return;
-      }
+    _focusNode.addListener(_onFocusChanged);
+  }
 
-      setState(() {
-        _hasFocus = _focusNode.hasFocus;
-      });
+  @override
+  void didUpdateWidget(_QuickEntryField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _ownFocusNode)?.removeListener(_onFocusChanged);
+      _focusNode.addListener(_onFocusChanged);
+    }
+  }
+
+  void _onFocusChanged() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _hasFocus = _focusNode.hasFocus;
     });
   }
 
@@ -784,7 +845,8 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
   @override
   void dispose() {
     _textController.dispose();
-    _focusNode.dispose();
+    _focusNode.removeListener(_onFocusChanged);
+    _ownFocusNode?.dispose();
     super.dispose();
   }
 

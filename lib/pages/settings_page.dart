@@ -193,6 +193,13 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                             ),
                             SwitchListTile(
+                              title: Text(strings.quickEntryTitle),
+                              subtitle: Text(strings.quickEntrySubtitle),
+                              secondary: const Icon(Icons.edit_note),
+                              value: widget.controller.quickEntryOnOpen,
+                              onChanged: widget.controller.setQuickEntryOnOpen,
+                            ),
+                            SwitchListTile(
                               title: Text(strings.showMemoriesTitle),
                               subtitle: Text(strings.showMemoriesSubtitle),
                               secondary: const Icon(

@@ -1,9 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:quick_actions/quick_actions.dart';
 
 import '../state/lighthouse_controller.dart';
+import '../util/resume_policy.dart';
 import '../widgets/lighthouse_mark.dart';
+import '../widgets/page_title.dart';
 import 'good_things_page.dart';
 import 'habits_page.dart';
 import 'review_page.dart';
@@ -18,16 +22,40 @@ class LighthouseShell extends StatefulWidget {
   State<LighthouseShell> createState() => _LighthouseShellState();
 }
 
-class _LighthouseShellState extends State<LighthouseShell> {
+class _LighthouseShellState extends State<LighthouseShell>
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
 
   late final List<Widget> _pages;
 
   late final StreamSubscription<Object> _saveErrorSubscription;
+  late final StreamSubscription<AppAction> _actionSubscription;
+
+  final ResumePolicy _resumePolicy = ResumePolicy();
+
+  /// Set once a shortcut has decided where the app opens, so the default
+  /// "start typing" doesn't override it.
+  bool _launchActionHandled = false;
+
+  static bool get _hasQuickActions =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    _actionSubscription = widget.controller.actions.listen((action) {
+      _selectPage(switch (action) {
+        AppAction.addGoodThing => 0,
+        AppAction.habits => 1,
+      });
+    });
+
+    _setUpQuickActions();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _handleLaunch());
 
     // One place for storage failures, so every screen gets feedback without
     // handling errors at each call site.
@@ -53,8 +81,79 @@ class _LighthouseShellState extends State<LighthouseShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _saveErrorSubscription.cancel();
+    _actionSubscription.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back after a real break: ready to type again, like a fresh start.
+    if (_resumePolicy.onStateChanged(state)) {
+      _maybeStartWithQuickEntry();
+    }
+  }
+
+  /// Web: an installed PWA's shortcuts open `./?action=add|habits`.
+  /// Otherwise a phone opens straight into today's field.
+  void _handleLaunch() {
+    if (!mounted) {
+      return;
+    }
+
+    final action = AppAction.fromId(Uri.base.queryParameters['action']);
+
+    if (action != null) {
+      _launchActionHandled = true;
+      widget.controller.requestAction(action);
+      return;
+    }
+
+    if (!_launchActionHandled) {
+      _maybeStartWithQuickEntry();
+    }
+  }
+
+  void _maybeStartWithQuickEntry() {
+    if (mounted &&
+        isPhoneLayout(context) &&
+        widget.controller.shouldStartWithQuickEntry) {
+      widget.controller.requestAction(AppAction.addGoodThing);
+    }
+  }
+
+  /// Android / iOS: long-press on the app icon.
+  Future<void> _setUpQuickActions() async {
+    if (!_hasQuickActions) {
+      return;
+    }
+
+    final strings = widget.controller.strings;
+
+    try {
+      const quickActions = QuickActions();
+      await quickActions.initialize((type) {
+        final action = AppAction.fromId(type);
+        if (action != null) {
+          _launchActionHandled = true;
+          widget.controller.requestAction(action);
+        }
+      });
+      await quickActions.setShortcutItems([
+        ShortcutItem(
+          type: AppAction.addGoodThing.id,
+          localizedTitle: strings.shortcutAdd,
+        ),
+        ShortcutItem(
+          type: AppAction.habits.id,
+          localizedTitle: strings.shortcutHabits,
+        ),
+      ]);
+    } catch (error) {
+      // No plugin (e.g. in tests) — shortcuts are a nicety, never a blocker.
+      debugPrint('Lighthouse quick actions unavailable: $error');
+    }
   }
 
   void _selectPage(int index) {

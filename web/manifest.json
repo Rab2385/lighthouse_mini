@@ -8,6 +8,20 @@
     "description": "Good Things und Habit Tracker – lokal und ruhig.",
     "orientation": "any",
     "prefer_related_applications": false,
+    "shortcuts": [
+        {
+            "name": "Good Thing eintragen",
+            "short_name": "Eintragen",
+            "url": "./?action=add",
+            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Habits von heute",
+            "short_name": "Habits",
+            "url": "./?action=habits",
+            "icons": [{ "src": "icons/Icon-192.png", "sizes": "192x192" }]
+        }
+    ],
     "icons": [
         {
             "src": "icons/Icon-192.png",

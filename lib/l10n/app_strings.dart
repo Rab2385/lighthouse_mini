@@ -202,6 +202,16 @@ class AppStrings {
     'Shows an entry from a year or a month ago today at the top.',
   );
   String get helpersTitle => _p('Kleine Helfer', 'Little helpers');
+  String get quickEntryTitle =>
+      _p('Beim Öffnen direkt schreiben', 'Start typing when opening');
+  String get quickEntrySubtitle => _p(
+    'Auf dem Handy ist das Feld für heute gleich bereit – solange heute '
+        'noch nichts eingetragen ist.',
+    "On a phone, today's field is ready right away – as long as nothing is "
+        'written for today yet.',
+  );
+  String get shortcutAdd => _p('Good Thing eintragen', 'Add a Good Thing');
+  String get shortcutHabits => _p('Habits von heute', "Today's habits");
 
   // ---- Review: Good Things ------------------------------------------
   String get copyAsText => _p('Als Text kopieren', 'Copy as text');
