@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -81,6 +82,14 @@ class _LighthouseAppState extends State<LighthouseApp> {
     );
   }
 
+  /// The web renderer can't use system fonts and would fetch Roboto and the
+  /// emoji font from Google; it gets the bundled ones instead. Phones use
+  /// their own system font (Roboto / San Francisco) and emoji.
+  static const String? _fontFamily = kIsWeb ? 'Roboto' : null;
+  static const List<String>? _fontFamilyFallback = kIsWeb
+      ? ['LighthouseEmoji']
+      : null;
+
   static SystemUiOverlayStyle _systemBarsFor(ThemeData theme) {
     final dark = theme.brightness == Brightness.dark;
     final base = dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
@@ -106,7 +115,8 @@ class _LighthouseAppState extends State<LighthouseApp> {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: const Color(0xFFF7F8FA),
-      fontFamily: 'Arial',
+      fontFamily: _fontFamily,
+      fontFamilyFallback: _fontFamilyFallback,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -147,7 +157,8 @@ class _LighthouseAppState extends State<LighthouseApp> {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: const Color(0xFF111718),
-      fontFamily: 'Arial',
+      fontFamily: _fontFamily,
+      fontFamilyFallback: _fontFamilyFallback,
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF172022),
         surfaceTintColor: Colors.transparent,

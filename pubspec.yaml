@@ -32,6 +32,25 @@ flutter:
 
   assets:
     - assets/images/lighthouse_mark.png
+    - assets/fonts/Roboto-OFL.txt
+    - assets/fonts/LighthouseEmoji-OFL.txt
+
+  # Bundled so the web app never loads fonts from Google (issue #12).
+  # Built by tool/subset_fonts.py. The family must be called "Roboto": the
+  # web engine otherwise downloads Roboto itself as its fallback font.
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-400.ttf
+        - asset: assets/fonts/Roboto-500.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-600.ttf
+          weight: 600
+        - asset: assets/fonts/Roboto-700.ttf
+          weight: 700
+    - family: LighthouseEmoji
+      fonts:
+        - asset: assets/fonts/LighthouseEmoji.ttf
 
 flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png"
