@@ -119,11 +119,18 @@ class MonthHeader extends StatelessWidget {
           onPressed: onPreviousMonth,
           icon: const Icon(Icons.chevron_left),
         ),
-        Text(
-          narrow
-              ? strings.shortMonthAndYear(selectedMonth)
-              : strings.monthAndYear(selectedMonth),
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        // Shrinks with an ellipsis instead of overflowing, e.g. with a large
+        // system text size.
+        Flexible(
+          child: Text(
+            narrow
+                ? strings.shortMonthAndYear(selectedMonth)
+                : strings.monthAndYear(selectedMonth),
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
         ),
         IconButton(
           visualDensity: VisualDensity.compact,

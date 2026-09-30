@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
@@ -23,7 +25,18 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _monthScrollController = ScrollController();
-  final GlobalKey _todayCardKey = GlobalKey();
+
+  /// The day card the view scrolls to: today, or a day opened from a memory.
+  final GlobalKey _targetCardKey = GlobalKey();
+  late DateTime _targetDay;
+
+  /// Today's quick-entry field, focused when the app opens into typing.
+  final FocusNode _todayFieldFocus = FocusNode();
+
+  /// Focus [_todayFieldFocus] once today's card has been scrolled to.
+  bool _focusTodayWhenVisible = false;
+
+  late final StreamSubscription<AppAction> _actionSubscription;
 
   String _searchQuery = '';
   bool _searchOpen = false;
@@ -39,13 +52,23 @@ class _GoodThingsPageState extends State<GoodThingsPage>
 
     final today = widget.controller.today;
     _selectedMonth = DateTime(today.year, today.month);
+    _targetDay = today;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+    _actionSubscription = widget.controller.actions.listen((action) {
+      if (action == AppAction.addGoodThing) {
+        _focusTodayWhenVisible = true;
+        _goToToday();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToTarget());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _actionSubscription.cancel();
+    _todayFieldFocus.dispose();
     _searchController.dispose();
     _monthScrollController.dispose();
     super.dispose();
@@ -85,15 +108,17 @@ class _GoodThingsPageState extends State<GoodThingsPage>
   }
 
   /// Jump back to the current month and scroll today's card into view.
-  void _goToToday() {
+  void _goToToday() => _goToDay(widget.controller.today);
+
+  /// Show [day]'s month and scroll its card into view.
+  void _goToDay(DateTime day) {
     if (!mounted) {
       return;
     }
 
-    final today = widget.controller.today;
-
     setState(() {
-      _selectedMonth = DateTime(today.year, today.month);
+      _selectedMonth = DateTime(day.year, day.month);
+      _targetDay = DateTime(day.year, day.month, day.day);
       if (_searchOpen || _searchQuery.trim().isNotEmpty) {
         _searchOpen = false;
         _searchQuery = '';
@@ -101,7 +126,7 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToTarget());
   }
 
   /// The search field is tucked away behind the header icon so it doesn't eat
@@ -117,38 +142,52 @@ class _GoodThingsPageState extends State<GoodThingsPage>
     });
 
     if (!_searchOpen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToToday());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToTarget());
     }
   }
 
-  void _scrollToToday() {
-    if (!mounted || !_isViewingCurrentMonth || _searchQuery.trim().isNotEmpty) {
+  bool get _isViewingTargetMonth {
+    return _selectedMonth.year == _targetDay.year &&
+        _selectedMonth.month == _targetDay.month;
+  }
+
+  void _scrollToTarget() {
+    if (!mounted || !_isViewingTargetMonth || _searchQuery.trim().isNotEmpty) {
       return;
     }
 
-    _settleOnToday(0);
+    _settleOnTarget(0);
   }
 
-  /// The month is a lazy [ListView], so today's card often isn't built yet.
+  /// The month is a lazy [ListView], so the target card often isn't built yet.
   /// Jump close to it by estimate, let the next frame build it, then refine
   /// with [Scrollable.ensureVisible]. Each retry reaches a little further down
   /// in case days with entries made the list taller than the estimate.
-  void _settleOnToday(int attempt) {
+  void _settleOnTarget(int attempt) {
     if (!mounted ||
-        !_isViewingCurrentMonth ||
+        !_isViewingTargetMonth ||
         _searchQuery.trim().isNotEmpty ||
         !_monthScrollController.hasClients) {
       return;
     }
 
-    final cardContext = _todayCardKey.currentContext;
+    final cardContext = _targetCardKey.currentContext;
     if (cardContext != null) {
+      final focusToday =
+          _focusTodayWhenVisible &&
+          DateUtils.isSameDay(_targetDay, widget.controller.today);
+      _focusTodayWhenVisible = false;
+
       Scrollable.ensureVisible(
         cardContext,
         alignment: 0.06,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-      );
+      ).then((_) {
+        if (focusToday && mounted) {
+          _todayFieldFocus.requestFocus();
+        }
+      });
       return;
     }
 
@@ -157,16 +196,16 @@ class _GoodThingsPageState extends State<GoodThingsPage>
     }
 
     const estimatedCardExtent = 145.0;
-    final todayDay = widget.controller.today.day;
+    final targetDay = _targetDay.day;
     final position = _monthScrollController.position;
-    final target = ((todayDay - 2 + attempt * 3) * estimatedCardExtent).clamp(
+    final target = ((targetDay - 2 + attempt * 3) * estimatedCardExtent).clamp(
       0.0,
       position.maxScrollExtent,
     );
 
     _monthScrollController.jumpTo(target);
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _settleOnToday(attempt + 1),
+      (_) => _settleOnTarget(attempt + 1),
     );
   }
 
@@ -228,6 +267,12 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       builder: (context, child) {
         final searchResults = widget.controller.searchGoodThings(_searchQuery);
 
+        // Only while looking at this month, so it never pushes an old month
+        // (possibly the memory's own) further down.
+        final memory = _isViewingCurrentMonth && _searchQuery.trim().isEmpty
+            ? widget.controller.todaysMemory
+            : null;
+
         return Column(
           children: [
             MonthHeader(
@@ -285,6 +330,16 @@ class _GoodThingsPageState extends State<GoodThingsPage>
                       ),
                     ),
             ),
+            if (memory != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+                child: _MemoryCard(
+                  memory: memory,
+                  strings: _strings,
+                  onOpen: () => _goToDay(memory.entry.date),
+                  onDismiss: widget.controller.dismissTodaysMemory,
+                ),
+              ),
             if (widget.controller.showBackupReminder &&
                 _searchQuery.trim().isEmpty)
               Padding(
@@ -319,12 +374,11 @@ class _GoodThingsPageState extends State<GoodThingsPage>
   Widget _buildDayCard(int day) {
     final date = DateTime(_selectedMonth.year, _selectedMonth.month, day);
 
-    final isToday =
-        _isViewingCurrentMonth && day == widget.controller.today.day;
+    final isTarget = _isViewingTargetMonth && day == _targetDay.day;
 
     return _GoodThingsDayCard(
-      key: isToday
-          ? _todayCardKey
+      key: isTarget
+          ? _targetCardKey
           : ValueKey('${date.year}-${date.month}-${date.day}'),
       date: date,
       weekdayName: _strings.weekdaysLong[date.weekday - 1],
@@ -334,6 +388,9 @@ class _GoodThingsPageState extends State<GoodThingsPage>
       controller: widget.controller,
       onEdit: _editEntry,
       onDelete: _deleteEntry,
+      fieldFocusNode: DateUtils.isSameDay(date, widget.controller.today)
+          ? _todayFieldFocus
+          : null,
     );
   }
 }
@@ -490,6 +547,7 @@ class _GoodThingsDayCard extends StatelessWidget {
     required this.controller,
     required this.onEdit,
     required this.onDelete,
+    this.fieldFocusNode,
   });
 
   final DateTime date;
@@ -500,6 +558,9 @@ class _GoodThingsDayCard extends StatelessWidget {
   final LighthouseController controller;
   final Future<void> Function(GoodThing entry) onEdit;
   final Future<void> Function(GoodThing entry) onDelete;
+
+  /// Given for today's card, so the page can focus its field.
+  final FocusNode? fieldFocusNode;
 
   bool get _isToday {
     final today = controller.today;
@@ -592,7 +653,11 @@ class _GoodThingsDayCard extends StatelessWidget {
                   ),
                 ),
               if (canAdd)
-                _QuickEntryField(date: date, controller: controller)
+                _QuickEntryField(
+                  date: date,
+                  controller: controller,
+                  focusNode: fieldFocusNode,
+                )
               else
                 _FutureLimitMessage(
                   maximumFutureDate: maximumFutureDate,
@@ -673,10 +738,17 @@ class _SavedGoodThingLine extends StatelessWidget {
 }
 
 class _QuickEntryField extends StatefulWidget {
-  const _QuickEntryField({required this.date, required this.controller});
+  const _QuickEntryField({
+    required this.date,
+    required this.controller,
+    this.focusNode,
+  });
 
   final DateTime date;
   final LighthouseController controller;
+
+  /// Owned by the caller when given; otherwise the field makes its own.
+  final FocusNode? focusNode;
 
   @override
   State<_QuickEntryField> createState() => _QuickEntryFieldState();
@@ -685,7 +757,10 @@ class _QuickEntryField extends StatefulWidget {
 class _QuickEntryFieldState extends State<_QuickEntryField> {
   final TextEditingController _textController = TextEditingController();
 
-  final FocusNode _focusNode = FocusNode();
+  FocusNode? _ownFocusNode;
+
+  FocusNode get _focusNode =>
+      widget.focusNode ?? (_ownFocusNode ??= FocusNode());
 
   bool _isSaving = false;
   bool _hasFocus = false;
@@ -695,14 +770,26 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
   void initState() {
     super.initState();
 
-    _focusNode.addListener(() {
-      if (!mounted) {
-        return;
-      }
+    _focusNode.addListener(_onFocusChanged);
+  }
 
-      setState(() {
-        _hasFocus = _focusNode.hasFocus;
-      });
+  @override
+  void didUpdateWidget(_QuickEntryField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _ownFocusNode)?.removeListener(_onFocusChanged);
+      _focusNode.addListener(_onFocusChanged);
+    }
+  }
+
+  void _onFocusChanged() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _hasFocus = _focusNode.hasFocus;
     });
   }
 
@@ -758,7 +845,8 @@ class _QuickEntryFieldState extends State<_QuickEntryField> {
   @override
   void dispose() {
     _textController.dispose();
-    _focusNode.dispose();
+    _focusNode.removeListener(_onFocusChanged);
+    _ownFocusNode?.dispose();
     super.dispose();
   }
 
@@ -854,6 +942,78 @@ class _FutureLimitMessage extends StatelessWidget {
       child: Text(
         strings.aheadEntriesUntil(strings.formatDate(maximumFutureDate)),
         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+    );
+  }
+}
+
+/// "Heute vor einem Jahr": one earlier Good Thing from the same calendar day.
+class _MemoryCard extends StatelessWidget {
+  const _MemoryCard({
+    required this.memory,
+    required this.strings,
+    required this.onOpen,
+    required this.onDismiss,
+  });
+
+  final Memory memory;
+  final AppStrings strings;
+  final VoidCallback onOpen;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final label = memory.age == MemoryAge.year
+        ? strings.memoryYearAgo
+        : strings.memoryMonthAgo;
+
+    return Material(
+      color: colorScheme.tertiaryContainer.withValues(alpha: 0.45),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
+          child: Row(
+            children: [
+              Icon(
+                Icons.auto_awesome_outlined,
+                size: 18,
+                color: colorScheme.onTertiaryContainer,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$label · ${strings.formatDate(memory.entry.date)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '„${memory.entry.text}“',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: strings.dismiss,
+                visualDensity: VisualDensity.compact,
+                onPressed: onDismiss,
+                icon: const Icon(Icons.close, size: 18),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

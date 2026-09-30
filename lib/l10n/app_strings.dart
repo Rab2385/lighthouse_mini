@@ -192,6 +192,60 @@ class AppStrings {
   String get greetingEvening => _p('Guten Abend', 'Good evening');
   String get greetingNight => _p('Gute Nacht', 'Good night');
 
+  // ---- Evening reminder ------------------------------------------
+  String get reminderCardTitle => _p('Tägliche Erinnerung', 'Daily reminder');
+  String get reminderCardText => _p(
+    'Eine ruhige Nachricht am Abend – nur, wenn du heute noch nichts '
+        'eingetragen hast.',
+    "One calm message in the evening – only if you haven't written anything "
+        'today.',
+  );
+  String get reminderUnsupported => _p(
+    'Erinnerungen gibt es in der App für Android und iOS.',
+    'Reminders are available in the Android and iOS app.',
+  );
+  String get reminderPermissionDenied => _p(
+    'Benachrichtigungen sind für Lighthouse ausgeschaltet. Du kannst sie in '
+        'den Systemeinstellungen erlauben.',
+    'Notifications are turned off for Lighthouse. You can allow them in the '
+        'system settings.',
+  );
+  String reminderAt(String time) => _p('Um $time', 'At $time');
+  String get reminderTitle => _p('Was war heute gut?', 'What was good today?');
+  String get reminderBody => _p('Ein Satz reicht.', 'One sentence is enough.');
+  String get reminderChannel => _p('Abend-Erinnerung', 'Evening reminder');
+
+  // ---- Memories ----------------------------------------------------
+  String get memoryYearAgo => _p('Heute vor einem Jahr', 'A year ago today');
+  String get memoryMonthAgo => _p('Heute vor einem Monat', 'A month ago today');
+  String get showMemoriesTitle =>
+      _p('Erinnerungen an frühere Einträge', 'Memories from earlier entries');
+  String get showMemoriesSubtitle => _p(
+    'Zeigt oben einen Eintrag von heute vor einem Jahr oder Monat.',
+    'Shows an entry from a year or a month ago today at the top.',
+  );
+  String get helpersTitle => _p('Kleine Helfer', 'Little helpers');
+  String get quickEntryTitle =>
+      _p('Beim Öffnen direkt schreiben', 'Start typing when opening');
+  String get quickEntrySubtitle => _p(
+    'Auf dem Handy ist das Feld für heute gleich bereit – solange heute '
+        'noch nichts eingetragen ist.',
+    "On a phone, today's field is ready right away – as long as nothing is "
+        'written for today yet.',
+  );
+  String get shortcutAdd => _p('Good Thing eintragen', 'Add a Good Thing');
+  String get shortcutHabits => _p('Habits von heute', "Today's habits");
+
+  // ---- Review: Good Things ------------------------------------------
+  String get copyAsText => _p('Als Text kopieren', 'Copy as text');
+  String get copied => _p('Kopiert.', 'Copied.');
+  String get noGoodThingsInRange => _p(
+    'Noch keine Good Things in diesem Zeitraum.',
+    'No Good Things in this period yet.',
+  );
+  String showAll(int n) => _p('Alle $n anzeigen', 'Show all $n');
+  String get showLess => _p('Weniger anzeigen', 'Show less');
+
   // ---- Backup ------------------------------------------------------
   String get backup => 'Backup';
   String get backupText => _p(
@@ -312,6 +366,15 @@ class AppStrings {
   List<String> get weekdaysShort => _en
       ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       : const ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+  /// "Di., 29.09." / "Tue, 09/29" — a day without its year.
+  String dayLabel(DateTime date) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    final weekday = weekdaysShort[date.weekday - 1];
+    return _en
+        ? '$weekday, ${two(date.month)}/${two(date.day)}'
+        : '$weekday., ${two(date.day)}.${two(date.month)}.';
+  }
 
   String formatDate(DateTime date) {
     String two(int v) => v.toString().padLeft(2, '0');

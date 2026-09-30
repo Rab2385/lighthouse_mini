@@ -148,6 +148,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     BackupCard(controller: widget.controller),
                     const SizedBox(height: 16),
 
+                    _ReminderCard(controller: widget.controller),
+                    const SizedBox(height: 16),
+
                     sectionCard(
                       title: strings.language,
                       child: SegmentedButton<String>(
@@ -171,6 +174,45 @@ class _SettingsPageState extends State<SettingsPage> {
                         secondary: const Icon(Icons.dark_mode_outlined),
                         value: widget.controller.darkMode,
                         onChanged: widget.controller.setDarkMode,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12, bottom: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: Text(
+                                strings.helpersTitle,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            SwitchListTile(
+                              title: Text(strings.quickEntryTitle),
+                              subtitle: Text(strings.quickEntrySubtitle),
+                              secondary: const Icon(Icons.edit_note),
+                              value: widget.controller.quickEntryOnOpen,
+                              onChanged: widget.controller.setQuickEntryOnOpen,
+                            ),
+                            SwitchListTile(
+                              title: Text(strings.showMemoriesTitle),
+                              subtitle: Text(strings.showMemoriesSubtitle),
+                              secondary: const Icon(
+                                Icons.auto_awesome_outlined,
+                              ),
+                              value: widget.controller.showMemories,
+                              onChanged: widget.controller.setShowMemories,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -248,6 +290,78 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         );
       },
+    );
+  }
+}
+
+/// The evening reminder: on/off and the time. Only works in the phone app.
+class _ReminderCard extends StatelessWidget {
+  const _ReminderCard({required this.controller});
+
+  final LighthouseController controller;
+
+  Future<void> _toggle(BuildContext context, bool value) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final changed = await controller.setReminderEnabled(value);
+
+    if (value && !changed) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(controller.strings.reminderPermissionDenied)),
+      );
+    }
+  }
+
+  Future<void> _pickTime(BuildContext context) async {
+    final minutes = controller.reminderMinutes;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60),
+    );
+
+    if (picked != null) {
+      await controller.setReminderMinutes(picked.hour * 60 + picked.minute);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = controller.strings;
+    final supported = controller.reminderSupported;
+    final minutes = controller.reminderMinutes;
+    final time = MaterialLocalizations.of(context).formatTimeOfDay(
+      TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60),
+      alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
+              title: Text(strings.reminderCardTitle),
+              subtitle: Text(
+                supported
+                    ? strings.reminderCardText
+                    : strings.reminderUnsupported,
+              ),
+              secondary: const Icon(Icons.notifications_none),
+              value: controller.reminderEnabled,
+              onChanged: supported ? (value) => _toggle(context, value) : null,
+            ),
+            if (controller.reminderEnabled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickTime(context),
+                  icon: const Icon(Icons.schedule, size: 18),
+                  label: Text(strings.reminderAt(time)),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

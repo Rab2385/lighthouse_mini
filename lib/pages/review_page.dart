@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../state/lighthouse_controller.dart';
+import '../util/review_text.dart';
 import '../widgets/page_title.dart';
 
 enum _RangePreset { thisMonth, last7Days, last30Days, thisYear, custom }
@@ -155,6 +157,12 @@ class _ReviewPageState extends State<ReviewPage> {
 
         final recurring = _recurringEntries(entries);
 
+        // Reading back is about what already happened; Ahead entries stay on
+        // the Good Things page.
+        final pastEntries = entries
+            .where((entry) => !entry.date.isAfter(today))
+            .toList();
+
         final strings = _strings;
 
         return Column(
@@ -174,6 +182,12 @@ class _ReviewPageState extends State<ReviewPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _GoodThingsSection(
+                      strings: strings,
+                      entries: pastEntries,
+                      periodLabel: _formatRange(_range),
+                    ),
+                    const SizedBox(height: 18),
                     _SectionCard(
                       title: strings.habits,
                       child: controller.activeHabits.isEmpty
@@ -386,11 +400,130 @@ class _PresetChip extends StatelessWidget {
   }
 }
 
+/// Every Good Thing of the period to read back, grouped by day, with a
+/// "copy as text" action. Long periods start folded to the newest days.
+class _GoodThingsSection extends StatefulWidget {
+  const _GoodThingsSection({
+    required this.strings,
+    required this.entries,
+    required this.periodLabel,
+  });
+
+  final AppStrings strings;
+  final List<GoodThing> entries;
+  final String periodLabel;
+
+  @override
+  State<_GoodThingsSection> createState() => _GoodThingsSectionState();
+}
+
+class _GoodThingsSectionState extends State<_GoodThingsSection> {
+  static const int _foldedDays = 5;
+
+  bool _expanded = false;
+
+  Future<void> _copy() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final text = goodThingsAsText(
+      periodLabel: widget.periodLabel,
+      entries: widget.entries,
+      strings: widget.strings,
+    );
+
+    await Clipboard.setData(ClipboardData(text: text));
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(content: Text(widget.strings.copied)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = widget.strings;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final days = <DateTime, List<GoodThing>>{};
+    for (final entry in newestDayFirst(widget.entries)) {
+      days.putIfAbsent(entry.date, () => []).add(entry);
+    }
+
+    final visibleDays = _expanded
+        ? days.entries.toList()
+        : days.entries.take(_foldedDays).toList();
+
+    return _SectionCard(
+      title: strings.goodThings,
+      count: widget.entries.isEmpty ? null : widget.entries.length,
+      child: widget.entries.isEmpty
+          ? Text(strings.noGoodThingsInRange)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final day in visibleDays) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 4),
+                    child: Text(
+                      strings.dayLabel(day.key),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  for (final entry in day.value)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2, bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '·  ',
+                            style: TextStyle(color: colorScheme.primary),
+                          ),
+                          Expanded(child: Text(entry.text)),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 6),
+                ],
+                // After reading, not squeezed next to the title.
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      onPressed: _copy,
+                      icon: const Icon(Icons.copy_outlined, size: 18),
+                      label: Text(strings.copyAsText),
+                    ),
+                    if (days.length > _foldedDays)
+                      TextButton(
+                        onPressed: () => setState(() => _expanded = !_expanded),
+                        child: Text(
+                          _expanded
+                              ? strings.showLess
+                              : strings.showAll(widget.entries.length),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
+}
+
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child});
+  const _SectionCard({required this.title, required this.child, this.count});
 
   final String title;
   final Widget child;
+
+  /// Shown faintly after the title.
+  final int? count;
 
   @override
   Widget build(BuildContext context) {
@@ -400,11 +533,31 @@ class _SectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            Row(
+              children: [
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      text: title,
+                      children: [
+                        if (count != null)
+                          TextSpan(
+                            text: '  $count',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w400,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             child,

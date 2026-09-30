@@ -10,14 +10,31 @@ import '../data/lighthouse_database.dart';
 import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../models/habit.dart';
+import '../services/reminder_scheduler.dart';
 import '../util/greeting.dart';
+import '../util/reminder_plan.dart';
 
 class LighthouseController extends ChangeNotifier {
-  LighthouseController(this._database);
+  LighthouseController(
+    this._database, {
+    this._reminders = const NoReminderScheduler(),
+  });
+
+  final ReminderScheduler _reminders;
+
+  static const String _reminderEnabledKey = 'reminderEnabled';
+  static const String _reminderMinutesKey = 'reminderMinutes';
+
+  /// 20:30 — after the day, before bed.
+  static const int defaultReminderMinutes = 20 * 60 + 30;
 
   /// Settings key marking that the starter habits were created once, so an
   /// intentionally empty habit list stays empty on the next launch.
   static const String _defaultHabitsSeededKey = 'defaultHabitsSeeded';
+
+  static const String _quickEntryOnOpenKey = 'quickEntryOnOpen';
+  static const String _showMemoriesKey = 'showMemories';
+  static const String _memoryDismissedOnKey = 'memoryDismissedOn';
 
   static const String _lastBackupAtKey = 'lastBackupAt';
   static const String _backupReminderDismissedAtKey =
@@ -28,12 +45,20 @@ class LighthouseController extends ChangeNotifier {
   static const Set<String> _deviceOnlySettings = {
     _lastBackupAtKey,
     _backupReminderDismissedAtKey,
+    _memoryDismissedOnKey,
   };
 
   final LighthouseDatabase _database;
 
   final StreamController<Object> _saveErrors =
       StreamController<Object>.broadcast();
+
+  final StreamController<AppAction> _actions =
+      StreamController<AppAction>.broadcast();
+
+  /// Requests to jump somewhere — from a home-screen shortcut or from
+  /// opening the app — for the shell and the pages to act on.
+  Stream<AppAction> get actions => _actions.stream;
 
   /// Emits whenever a change could not be written to local storage. The
   /// in-memory change has already been rolled back by then.
@@ -51,6 +76,11 @@ class LighthouseController extends ChangeNotifier {
   DateTime? _lastBackupAt;
   DateTime? _backupReminderDismissedAt;
   bool _hasSafetyBackup = false;
+  bool _showMemories = true;
+  bool _quickEntryOnOpen = true;
+  bool _reminderEnabled = false;
+  int _reminderMinutes = defaultReminderMinutes;
+  String? _memoryDismissedOn;
 
   bool get darkMode => _darkMode;
   String get userName => _userName;
@@ -140,6 +170,12 @@ class LighthouseController extends ChangeNotifier {
       settings[_backupReminderDismissedAtKey],
     );
     _hasSafetyBackup = await _database.loadSafetyBackup() != null;
+    _showMemories = settings[_showMemoriesKey] as bool? ?? true;
+    _quickEntryOnOpen = settings[_quickEntryOnOpenKey] as bool? ?? true;
+    _reminderEnabled = settings[_reminderEnabledKey] as bool? ?? false;
+    _reminderMinutes =
+        settings[_reminderMinutesKey] as int? ?? defaultReminderMinutes;
+    _memoryDismissedOn = settings[_memoryDismissedOnKey] as String?;
 
     final storedLanguage = settings['language'] as String?;
     _languageCode = AppStrings.supportedCodes.contains(storedLanguage)
@@ -162,11 +198,13 @@ class LighthouseController extends ChangeNotifier {
     }
 
     notifyListeners();
+    await _planReminders();
   }
 
   @override
   void dispose() {
     _saveErrors.close();
+    _actions.close();
     super.dispose();
   }
 
@@ -344,10 +382,12 @@ class LighthouseController extends ChangeNotifier {
     _goodThings.add(entry);
     notifyListeners();
 
-    return _persist(
+    final saved = await _persist(
       () => _database.saveGoodThing(entry),
       rollback: () => _goodThings.removeWhere((e) => e.id == entry.id),
     );
+    await _planRemindersIfToday(entry.date);
+    return saved;
   }
 
   /// Puts a deleted entry back exactly as it was — same id and timestamps,
@@ -360,10 +400,12 @@ class LighthouseController extends ChangeNotifier {
     _goodThings.add(entry);
     notifyListeners();
 
-    return _persist(
+    final saved = await _persist(
       () => _database.saveGoodThing(entry),
       rollback: () => _goodThings.removeWhere((e) => e.id == entry.id),
     );
+    await _planRemindersIfToday(entry.date);
+    return saved;
   }
 
   Future<bool> updateGoodThing({
@@ -407,10 +449,12 @@ class LighthouseController extends ChangeNotifier {
     _goodThings.removeWhere((entry) => entry.id == id);
     notifyListeners();
 
-    return _persist(
+    final deleted = await _persist(
       () => _database.deleteGoodThing(id),
       rollback: () => _goodThings.addAll(removed),
     );
+    await _planRemindersIfToday(removed.first.date);
+    return deleted;
   }
 
   bool isHabitCompleted({required String habitId, required DateTime date}) {
@@ -587,10 +631,12 @@ class LighthouseController extends ChangeNotifier {
     _languageCode = code;
     notifyListeners();
 
-    return _persist(
+    final saved = await _persist(
       () => _database.saveSetting('language', code),
       rollback: () => _languageCode = previous,
     );
+    await _planReminders();
+    return saved;
   }
 
   Future<bool> setUserName(String value) async {
@@ -608,6 +654,168 @@ class LighthouseController extends ChangeNotifier {
       () => _database.saveSetting('userName', cleanValue),
       rollback: () => _userName = previous,
     );
+  }
+
+  // ---- Quick entry ----------------------------------------------------------
+
+  /// Whether opening the app on a phone goes straight to today's field.
+  bool get quickEntryOnOpen => _quickEntryOnOpen;
+
+  /// Open straight into typing — only while today is still empty, so opening
+  /// the app to read never pops up a keyboard.
+  bool get shouldStartWithQuickEntry =>
+      _quickEntryOnOpen && goodThingsForDate(today).isEmpty;
+
+  void requestAction(AppAction action) {
+    if (!_actions.isClosed) {
+      _actions.add(action);
+    }
+  }
+
+  Future<bool> setQuickEntryOnOpen(bool value) async {
+    if (_quickEntryOnOpen == value) {
+      return false;
+    }
+
+    final previous = _quickEntryOnOpen;
+    _quickEntryOnOpen = value;
+    notifyListeners();
+
+    return _persist(
+      () => _database.saveSetting(_quickEntryOnOpenKey, value),
+      rollback: () => _quickEntryOnOpen = previous,
+    );
+  }
+
+  // ---- Evening reminder -----------------------------------------------------
+
+  /// Whether this device can show reminders (Android / iOS app).
+  bool get reminderSupported => _reminders.isSupported;
+
+  bool get reminderEnabled => _reminderEnabled && _reminders.isSupported;
+
+  /// Minutes after midnight, e.g. 1230 for 20:30.
+  int get reminderMinutes => _reminderMinutes;
+
+  /// Switching on asks for the notification permission first; if it is
+  /// refused the reminder stays off and this returns false.
+  Future<bool> setReminderEnabled(bool value) async {
+    if (value && !await _reminders.requestPermission()) {
+      return false;
+    }
+
+    _reminderEnabled = value;
+    notifyListeners();
+    await _database.saveSetting(_reminderEnabledKey, value);
+    await _planReminders();
+    return true;
+  }
+
+  Future<void> setReminderMinutes(int minutes) async {
+    _reminderMinutes = minutes;
+    notifyListeners();
+    await _database.saveSetting(_reminderMinutesKey, minutes);
+    await _planReminders();
+  }
+
+  Future<void> _planRemindersIfToday(DateTime date) async {
+    if (_isSameDay(date, today)) {
+      await _planReminders();
+    }
+  }
+
+  /// Re-plans the next evenings. Never lets a notification problem get in
+  /// the way of saving an entry.
+  Future<void> _planReminders() async {
+    if (!_reminders.isSupported) {
+      return;
+    }
+
+    try {
+      if (!_reminderEnabled) {
+        await _reminders.cancelAll();
+        return;
+      }
+
+      await _reminders.schedule(
+        reminderTimes(
+          now: DateTime.now(),
+          hour: _reminderMinutes ~/ 60,
+          minute: _reminderMinutes % 60,
+          wroteToday: goodThingsForDate(today).isNotEmpty,
+        ),
+        title: strings.reminderTitle,
+        body: strings.reminderBody,
+        channelName: strings.reminderChannel,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Lighthouse could not plan reminders: $error\n$stackTrace');
+    }
+  }
+
+  // ---- Memories -------------------------------------------------------------
+
+  /// Whether Good Things shows "Heute vor einem Jahr / Monat".
+  bool get showMemories => _showMemories;
+
+  /// Today's memory card, unless switched off or dismissed for today.
+  Memory? get todaysMemory {
+    if (!_showMemories || _memoryDismissedOn == _dateKey(today)) {
+      return null;
+    }
+
+    return memoryFor(today);
+  }
+
+  /// A Good Thing written exactly one year before [day], or — if there is
+  /// none — exactly one month before. A day that doesn't exist there (29.02.
+  /// a year later, 31.03. a month earlier) has no memory. With several
+  /// entries on that day the pick depends only on [day], so it stays the
+  /// same all day instead of changing on every rebuild.
+  Memory? memoryFor(DateTime day) {
+    for (final age in MemoryAge.values) {
+      final then = switch (age) {
+        MemoryAge.year => DateTime(day.year - 1, day.month, day.day),
+        MemoryAge.month => DateTime(day.year, day.month - 1, day.day),
+      };
+
+      // DateTime rolls 31.02. over into March — that date didn't exist.
+      if (then.day != day.day) {
+        continue;
+      }
+
+      final candidates = goodThingsForDate(then);
+
+      if (candidates.isNotEmpty) {
+        final seed = day.year * 10000 + day.month * 100 + day.day;
+        return Memory(candidates[seed % candidates.length], age);
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> setShowMemories(bool value) async {
+    if (_showMemories == value) {
+      return false;
+    }
+
+    final previous = _showMemories;
+    _showMemories = value;
+    notifyListeners();
+
+    return _persist(
+      () => _database.saveSetting(_showMemoriesKey, value),
+      rollback: () => _showMemories = previous,
+    );
+  }
+
+  /// Hides today's memory card until tomorrow.
+  Future<void> dismissTodaysMemory() async {
+    final key = _dateKey(today);
+    _memoryDismissedOn = key;
+    notifyListeners();
+    await _database.saveSetting(_memoryDismissedOnKey, key);
   }
 
   // ---- Backup ---------------------------------------------------------------
@@ -753,9 +961,15 @@ class LighthouseController extends ChangeNotifier {
     _lastBackupAt = null;
     _backupReminderDismissedAt = null;
     _hasSafetyBackup = false;
+    _showMemories = true;
+    _memoryDismissedOn = null;
+    _quickEntryOnOpen = true;
+    _reminderEnabled = false;
+    _reminderMinutes = defaultReminderMinutes;
 
     await _createDefaultHabits();
     notifyListeners();
+    await _planReminders();
     return true;
   }
 
@@ -934,4 +1148,38 @@ class _SuggestionStatistics {
       lastUsed: lastUsed ?? this.lastUsed,
     );
   }
+}
+
+/// Where a shortcut or the app start wants to go.
+enum AppAction {
+  /// Good Things, today's field focused.
+  addGoodThing,
+
+  /// The Habits tab.
+  habits;
+
+  /// The id used in shortcuts (`?action=add`, quick action types).
+  String get id => switch (this) {
+    AppAction.addGoodThing => 'add',
+    AppAction.habits => 'habits',
+  };
+
+  static AppAction? fromId(String? id) {
+    for (final action in values) {
+      if (action.id == id) {
+        return action;
+      }
+    }
+    return null;
+  }
+}
+
+enum MemoryAge { year, month }
+
+/// An earlier Good Thing brought back on the same calendar day.
+class Memory {
+  const Memory(this.entry, this.age);
+
+  final GoodThing entry;
+  final MemoryAge age;
 }
