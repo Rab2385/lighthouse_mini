@@ -452,13 +452,6 @@ class _GoodThingsSectionState extends State<_GoodThingsSection> {
     return _SectionCard(
       title: strings.goodThings,
       count: widget.entries.isEmpty ? null : widget.entries.length,
-      action: widget.entries.isEmpty
-          ? null
-          : TextButton.icon(
-              onPressed: _copy,
-              icon: const Icon(Icons.copy_outlined, size: 18),
-              label: Text(strings.copyAsText),
-            ),
       child: widget.entries.isEmpty
           ? Text(strings.noGoodThingsInRange)
           : Column(
@@ -492,17 +485,31 @@ class _GoodThingsSectionState extends State<_GoodThingsSection> {
                     ),
                   const SizedBox(height: 6),
                 ],
-                if (days.length > _foldedDays)
-                  Center(
-                    child: TextButton(
-                      onPressed: () => setState(() => _expanded = !_expanded),
-                      child: Text(
-                        _expanded
-                            ? strings.showLess
-                            : strings.showAll(widget.entries.length),
+                // After reading, not squeezed next to the title.
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
+                      onPressed: _copy,
+                      icon: const Icon(Icons.copy_outlined, size: 18),
+                      label: Text(strings.copyAsText),
                     ),
-                  ),
+                    if (days.length > _foldedDays)
+                      TextButton(
+                        onPressed: () => setState(() => _expanded = !_expanded),
+                        child: Text(
+                          _expanded
+                              ? strings.showLess
+                              : strings.showAll(widget.entries.length),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
     );
@@ -510,21 +517,13 @@ class _GoodThingsSectionState extends State<_GoodThingsSection> {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.child,
-    this.count,
-    this.action,
-  });
+  const _SectionCard({required this.title, required this.child, this.count});
 
   final String title;
   final Widget child;
 
   /// Shown faintly after the title.
   final int? count;
-
-  /// Right-aligned next to the title.
-  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -558,7 +557,6 @@ class _SectionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                ?action,
               ],
             ),
             const SizedBox(height: 16),
