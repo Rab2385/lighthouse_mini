@@ -5,6 +5,7 @@ import '../l10n/app_strings.dart';
 import '../models/good_thing.dart';
 import '../state/lighthouse_controller.dart';
 import '../util/review_text.dart';
+import '../util/year_heatmap.dart';
 import '../widgets/page_title.dart';
 
 enum _RangePreset { thisMonth, last7Days, last30Days, thisYear, custom }
@@ -105,6 +106,17 @@ class _ReviewPageState extends State<ReviewPage> {
     });
   }
 
+  /// From a box in the year card: look at that month in the whole Review.
+  void _showMonth(DateTime month) {
+    setState(() {
+      _preset = _RangePreset.custom;
+      _range = DateTimeRange(
+        start: DateTime(month.year, month.month, 1),
+        end: DateTime(month.year, month.month + 1, 0),
+      );
+    });
+  }
+
   int _rangeLengthInDays(DateTime start, DateTime end) {
     // Count in UTC so daylight-saving transitions never shift the total.
     final utcStart = DateTime.utc(start.year, start.month, start.day);
@@ -182,6 +194,14 @@ class _ReviewPageState extends State<ReviewPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_preset == _RangePreset.thisYear) ...[
+                      _YearCard(
+                        controller: controller,
+                        year: start.year,
+                        onMonthSelected: _showMonth,
+                      ),
+                      const SizedBox(height: 18),
+                    ],
                     _GoodThingsSection(
                       strings: strings,
                       entries: pastEntries,
@@ -618,6 +638,258 @@ class _HabitReviewRow extends StatelessWidget {
               textAlign: TextAlign.end,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Twelve month boxes per row — Good Things and every active habit — shaded
+/// by how often it happened. A calm picture of the year, no numbers to beat.
+class _YearCard extends StatelessWidget {
+  const _YearCard({
+    required this.controller,
+    required this.year,
+    required this.onMonthSelected,
+  });
+
+  final LighthouseController controller;
+  final int year;
+  final ValueChanged<DateTime> onMonthSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = controller.strings;
+    final today = controller.today;
+    final colorScheme = Theme.of(context).colorScheme;
+    final months = [for (var m = 1; m <= 12; m++) DateTime(year, m)];
+
+    List<_YearCell> cells(int Function(DateTime start, DateTime end) count) {
+      return [
+        for (final month in months)
+          () {
+            final days = scoredDaysInMonth(month, today);
+            final done = days == 0
+                ? 0
+                : count(month, DateTime(month.year, month.month, days));
+            return _YearCell(month: month, done: done, days: days);
+          }(),
+      ];
+    }
+
+    return _SectionCard(
+      title: strings.yearCard,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: _YearGrid(
+              children: [
+                for (final month in months)
+                  Text(
+                    strings.monthNames[month.month - 1].substring(0, 1),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          _YearRow(
+            icon: Icons.auto_awesome,
+            name: strings.goodThings,
+            cells: cells(controller.goodThingDaysInRange),
+            strings: strings,
+            onMonthSelected: onMonthSelected,
+          ),
+          for (final habit in controller.activeHabits)
+            _YearRow(
+              emoji: habit.emoji,
+              name: habit.name,
+              cells: cells(
+                (start, end) => controller.habitCompletionsInRange(
+                  habitId: habit.id,
+                  start: start,
+                  end: end,
+                ),
+              ),
+              strings: strings,
+              onMonthSelected: onMonthSelected,
+            ),
+          const SizedBox(height: 2),
+          ExcludeSemantics(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  strings.heatLess,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                for (var level = 0; level <= 4; level++)
+                  Container(
+                    width: 12,
+                    height: 12,
+                    margin: const EdgeInsets.only(right: 3),
+                    decoration: _heatDecoration(colorScheme, level, true),
+                  ),
+                const SizedBox(width: 3),
+                Text(
+                  strings.heatMore,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _YearCell {
+  const _YearCell({
+    required this.month,
+    required this.done,
+    required this.days,
+  });
+
+  final DateTime month;
+  final int done;
+
+  /// 0 for a month that hasn't started yet.
+  final int days;
+}
+
+/// Box colours: empty surface, then four steps towards the theme's primary,
+/// so contrast holds in light and dark mode. Months still ahead are outlines.
+BoxDecoration _heatDecoration(
+  ColorScheme colorScheme,
+  int level,
+  bool started,
+) {
+  if (!started) {
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(3),
+      border: Border.all(color: colorScheme.outlineVariant),
+    );
+  }
+
+  const steps = [0.0, 0.3, 0.55, 0.78, 1.0];
+  final empty = colorScheme.surfaceContainerHighest;
+
+  return BoxDecoration(
+    borderRadius: BorderRadius.circular(3),
+    color: Color.lerp(empty, colorScheme.primary, steps[level]),
+  );
+}
+
+/// Twelve equal columns with a small gap, shared by the month letters and
+/// every row so they line up.
+class _YearGrid extends StatelessWidget {
+  const _YearGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: 3),
+          Expanded(child: children[i]),
+        ],
+      ],
+    );
+  }
+}
+
+class _YearRow extends StatelessWidget {
+  const _YearRow({
+    this.icon,
+    this.emoji,
+    required this.name,
+    required this.cells,
+    required this.strings,
+    required this.onMonthSelected,
+  });
+
+  /// Shown before [name]: an icon for Good Things, the symbol for a habit.
+  final IconData? icon;
+  final String? emoji;
+  final String name;
+  final List<_YearCell> cells;
+  final AppStrings strings;
+  final ValueChanged<DateTime> onMonthSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: Row(
+              children: [
+                if (icon != null)
+                  Icon(icon, size: 16, color: colorScheme.primary)
+                else
+                  Text(emoji ?? '', style: const TextStyle(fontSize: 15)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          _YearGrid(
+            children: [
+              for (final cell in cells)
+                Tooltip(
+                  message: strings.yearCellLabel(
+                    name,
+                    cell.month,
+                    cell.done,
+                    cell.days,
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(3),
+                    onTap: cell.days == 0
+                        ? null
+                        : () => onMonthSelected(cell.month),
+                    child: Container(
+                      height: 18,
+                      decoration: _heatDecoration(
+                        colorScheme,
+                        heatLevel(cell.done, cell.days),
+                        cell.days > 0,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),

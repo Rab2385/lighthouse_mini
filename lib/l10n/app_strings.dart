@@ -137,6 +137,20 @@ class AppStrings {
     'Noch keine wiederkehrenden Texte in diesem Zeitraum.',
     'No recurring texts in this period yet.',
   );
+  String get yearCard => _p('Das Jahr', 'The year');
+  String get heatLess => _p('weniger', 'less');
+  String get heatMore => _p('mehr', 'more');
+  String yearCellLabel(String name, DateTime month, int done, int days) {
+    final monthName = monthNames[month.month - 1];
+    if (days == 0) {
+      return _p('$name, $monthName: noch offen', '$name, $monthName: not yet');
+    }
+    return _p(
+      '$name, $monthName: $done von $days Tagen',
+      '$name, $monthName: $done of $days days',
+    );
+  }
+
   String get rangeThisMonth => _p('Monat', 'Month');
   String rangeLastDays(int n) => _p('$n Tage', '$n days');
   String get pickRange => _p('Zeitraum wählen', 'Choose range');

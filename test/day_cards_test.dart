@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sembast/sembast_memory.dart';
+import 'package:sembast/sembast_memory.dart' show databaseFactoryMemory;
 
 import 'package:lighthouse_mini/app/lighthouse_app.dart';
 import 'package:lighthouse_mini/data/lighthouse_database.dart';
+import 'package:lighthouse_mini/pages/good_things_page.dart';
 import 'package:lighthouse_mini/state/lighthouse_controller.dart';
 
 Future<LighthouseController> _pumpPhone(
@@ -61,26 +62,42 @@ void main() {
   testWidgets('＋ opens that day with focus and closes the previous one', (
     tester,
   ) async {
-    await _pumpPhone(tester, 'cards-open');
+    final controller = await _pumpPhone(tester, 'cards-open');
+    final today = controller.today;
 
-    final addButtons = find.byTooltip('Eintrag hinzufügen');
-    await tester.ensureVisible(addButtons.last);
+    // Two other days of this month right next to today, so they are on
+    // screen whatever the date (on the 1st the list starts at the top).
+    Finder addButtonOn(int offset) {
+      final day = today.day > 2 ? today.day - offset : today.day + offset;
+      return find.descendant(
+        of: find.byKey(ValueKey('${today.year}-${today.month}-$day')),
+        matching: find.byTooltip('Eintrag hinzufügen'),
+      );
+    }
+
+    await tester.ensureVisible(addButtonOn(1));
     await tester.pumpAndSettle();
-    await tester.tap(addButtons.last);
+    await tester.tap(addButtonOn(1));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TextField), findsNWidgets(2)); // today + opened day
+    // Opening scrolls that day to the top, which can push today's card just
+    // out of view, so count the built fields rather than the visible ones.
+    final fields = find.descendant(
+      of: find.byType(GoodThingsPage, skipOffstage: false),
+      matching: find.byType(TextField, skipOffstage: false),
+      skipOffstage: false,
+    );
+    expect(fields, findsNWidgets(2)); // today + opened day
     final focused = tester
         .widgetList<EditableText>(find.byType(EditableText))
         .where((field) => field.focusNode.hasFocus);
     expect(focused, hasLength(1));
 
-    final another = find.byTooltip('Eintrag hinzufügen').first;
-    await tester.ensureVisible(another);
+    await tester.ensureVisible(addButtonOn(2));
     await tester.pumpAndSettle();
-    await tester.tap(another);
+    await tester.tap(addButtonOn(2));
     await tester.pumpAndSettle();
-    expect(find.byType(TextField), findsNWidgets(2)); // still only two
+    expect(fields, findsNWidgets(2)); // still only two
   });
 
   testWidgets('swipe left deletes an entry, with undo', (tester) async {
