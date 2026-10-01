@@ -257,6 +257,15 @@ class LighthouseController extends ChangeNotifier {
     return result;
   }
 
+  /// Number of distinct days in [start] .. [end] (both inclusive) with at
+  /// least one Good Thing.
+  int goodThingDaysInRange(DateTime start, DateTime end) {
+    return goodThingsInRange(
+      start,
+      end,
+    ).map((entry) => _dateOnly(entry.date)).toSet().length;
+  }
+
   /// Number of days in [start] .. [end] (both inclusive) on which [habitId]
   /// is marked complete.
   int habitCompletionsInRange({
