@@ -316,7 +316,7 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
         return Column(
           children: [
             MonthHeader(
-              title: strings.habitTracker,
+              title: strings.habits,
               strings: strings,
               selectedMonth: _selectedMonth,
               showMonthControls: !compact,

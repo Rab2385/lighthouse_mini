@@ -1129,14 +1129,6 @@ class LighthouseController extends ChangeNotifier {
         sortOrder: 4,
         createdAt: now,
       ),
-      Habit(
-        id: 'alcohol',
-        name: 'Alkohol',
-        emoji: '🍷',
-        isArchived: false,
-        sortOrder: 5,
-        createdAt: now,
-      ),
     ];
 
     _habits.addAll(defaults);

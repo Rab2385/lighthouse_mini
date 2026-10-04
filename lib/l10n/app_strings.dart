@@ -69,13 +69,15 @@ class AppStrings {
   String get statusToday => _p('Heute', 'Today');
   String get statusAhead => _p('Ahead', 'Ahead');
   String get statusGood => _p('Good', 'Good');
+  String entryCount(int n) => _en
+      ? (n == 1 ? '1 entry' : '$n entries')
+      : (n == 1 ? '1 Eintrag' : '$n Einträge');
   String aheadEntriesUntil(String date) => _p(
     'Ahead-Einträge sind bis $date möglich.',
     'Ahead entries are possible until $date.',
   );
 
   // ---- Habits ------------------------------------------------------
-  String get habitTracker => _p('Habit Tracker', 'Habit Tracker');
   String get habitsCompactHint => _p(
     'Gestern und heute – ein Tippen genügt.',
     'Yesterday and today – one tap.',

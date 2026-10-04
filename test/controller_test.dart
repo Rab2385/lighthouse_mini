@@ -31,7 +31,13 @@ void main() {
       final controller = LighthouseController(_memoryDatabase('seed-first'));
       await controller.initialize();
 
-      expect(controller.habits, hasLength(6));
+      expect(controller.habits.map((habit) => habit.id), [
+        'work',
+        'coffee',
+        'water',
+        'coding',
+        'sport',
+      ]);
     });
 
     test('stay gone after the user deletes every habit', () async {

@@ -144,6 +144,17 @@ class _ReviewPageState extends State<ReviewPage> {
       return _strings.monthAndYear(start);
     }
 
+    final isWholeYear =
+        start.month == 1 &&
+        start.day == 1 &&
+        end.year == start.year &&
+        end.month == 12 &&
+        end.day == 31;
+
+    if (isWholeYear) {
+      return '${start.year}';
+    }
+
     return '${_strings.formatDate(start)} – ${_strings.formatDate(end)}';
   }
 

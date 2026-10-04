@@ -612,18 +612,25 @@ class _GoodThingsDayCard extends StatelessWidget {
     return date.isAfter(controller.today);
   }
 
-  String _status(AppStrings strings) {
-    return _isToday
-        ? strings.statusToday
-        : _isFuture
-        ? strings.statusAhead
-        : strings.statusGood;
+  /// The small line next to the weekday. Empty days get none, so a fresh
+  /// month doesn't read as if every day already had something in it.
+  String? _status(AppStrings strings) {
+    if (_isToday) {
+      return strings.statusToday;
+    }
+    if (entries.isEmpty) {
+      return null;
+    }
+    return _isFuture
+        ? '${strings.statusAhead} · ${entries.length}'
+        : strings.entryCount(entries.length);
   }
 
   /// A closed day: a single line when empty, its entries below when not.
   Widget _buildCompact(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final strings = controller.strings;
+    final status = _status(strings);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -654,14 +661,15 @@ class _GoodThingsDayCard extends StatelessWidget {
                     text: weekdayName,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                     children: [
-                      TextSpan(
-                        text: ' · ${_status(strings)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w400,
-                          color: colorScheme.primary,
+                      if (status != null)
+                        TextSpan(
+                          text: ' · $status',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: colorScheme.primary,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -752,14 +760,16 @@ class _GoodThingsDayCard extends StatelessWidget {
                           weekdayName,
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _status(strings),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colorScheme.primary,
+                        if (_status(strings) case final status?) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            status,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.primary,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
