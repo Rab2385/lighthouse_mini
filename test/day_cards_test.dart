@@ -4,6 +4,7 @@ import 'package:sembast/sembast_memory.dart' show databaseFactoryMemory;
 
 import 'package:lighthouse_mini/app/lighthouse_app.dart';
 import 'package:lighthouse_mini/data/lighthouse_database.dart';
+import 'package:lighthouse_mini/l10n/app_strings.dart';
 import 'package:lighthouse_mini/pages/good_things_page.dart';
 import 'package:lighthouse_mini/state/lighthouse_controller.dart';
 
@@ -11,6 +12,7 @@ Future<LighthouseController> _pumpPhone(
   WidgetTester tester,
   String name, {
   List<String> todayEntries = const [],
+  Future<void> Function(LighthouseController controller)? setup,
 }) async {
   tester.view.physicalSize = const Size(375 * 3, 667 * 3);
   tester.view.devicePixelRatio = 3;
@@ -27,6 +29,7 @@ Future<LighthouseController> _pumpPhone(
     for (final text in todayEntries) {
       await controller.addGoodThing(date: controller.today, text: text);
     }
+    await setup?.call(controller);
   });
 
   await tester.pumpWidget(LighthouseApp(controller: controller));
@@ -69,9 +72,14 @@ void main() {
     // screen whatever the date (on the 1st the list starts at the top).
     Finder addButtonOn(int offset) {
       final day = today.day > 2 ? today.day - offset : today.day + offset;
+      // Built but possibly just above the viewport, hence skipOffstage.
       return find.descendant(
-        of: find.byKey(ValueKey('${today.year}-${today.month}-$day')),
-        matching: find.byTooltip('Eintrag hinzufügen'),
+        of: find.byKey(
+          ValueKey('${today.year}-${today.month}-$day'),
+          skipOffstage: false,
+        ),
+        matching: find.byTooltip('Eintrag hinzufügen', skipOffstage: false),
+        skipOffstage: false,
       );
     }
 
@@ -136,5 +144,75 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.goodThings, isEmpty);
+  });
+
+  group('status next to the weekday (#38)', () {
+    // Any day line in the list, e.g. "Samstag · Good".
+    // Built cards only; the list starts at today, so yesterday sits just
+    // above the viewport.
+    Finder statusLine(String text) => find.byWidgetPredicate(
+      (widget) =>
+          widget is RichText && widget.text.toPlainText().endsWith(text),
+      skipOffstage: false,
+    );
+
+    testWidgets('empty days show no "Good" or "Ahead"', (tester) async {
+      await _pumpPhone(tester, 'cards-status-empty');
+
+      expect(statusLine(' · Good'), findsNothing);
+      expect(statusLine(' · Ahead'), findsNothing);
+      expect(find.text('Heute'), findsWidgets);
+    });
+
+    testWidgets('a past day with entries shows how many', (tester) async {
+      late DateTime day;
+      await _pumpPhone(
+        tester,
+        'cards-status-past',
+        setup: (controller) async {
+          final today = controller.today;
+          // Yesterday, or the day before on the 1st (then it's last month and
+          // the 2nd stands in as a future day below instead).
+          day = today.day > 1
+              ? DateTime(today.year, today.month, today.day - 1)
+              : DateTime(today.year, today.month, today.day + 1);
+          await controller.addGoodThing(date: day, text: 'Radtour');
+          await controller.addGoodThing(date: day, text: 'Anruf von Oma');
+        },
+      );
+
+      final isPast = day.isBefore(DateTime.now());
+      expect(
+        statusLine(isPast ? ' · 2 Einträge' : ' · Ahead · 2'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a coming day with an entry is marked Ahead', (tester) async {
+      late DateTime day;
+      await _pumpPhone(
+        tester,
+        'cards-status-ahead',
+        setup: (controller) async {
+          final today = controller.today;
+          day = DateTime(today.year, today.month, today.day + 1);
+          await controller.addGoodThing(date: day, text: 'Konzert');
+        },
+      );
+
+      if (day.month != DateTime.now().month) {
+        // Last day of the month: tomorrow lives on the next page.
+        return;
+      }
+      expect(statusLine(' · Ahead · 1'), findsOneWidget);
+      expect(statusLine(' · 1 Eintrag'), findsNothing);
+    });
+
+    test('entry counts read naturally', () {
+      expect(const AppStrings('de').entryCount(1), '1 Eintrag');
+      expect(const AppStrings('de').entryCount(3), '3 Einträge');
+      expect(const AppStrings('en').entryCount(1), '1 entry');
+      expect(const AppStrings('en').entryCount(3), '3 entries');
+    });
   });
 }

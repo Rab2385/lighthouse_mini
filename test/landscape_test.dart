@@ -67,15 +67,14 @@ void main() {
         await tester.pumpAndSettle();
 
         // Default habits, fully on screen.
-        final visible =
-            ['Work', 'Coffee', 'Water', 'Coding', 'Sport', 'Alkohol'].where((
-              name,
-            ) {
-              final finder = find.text(name);
-              if (finder.evaluate().isEmpty) return false;
-              final rect = tester.getRect(finder.first);
-              return rect.bottom <= size.height;
-            });
+        final visible = ['Work', 'Coffee', 'Water', 'Coding', 'Sport'].where((
+          name,
+        ) {
+          final finder = find.text(name);
+          if (finder.evaluate().isEmpty) return false;
+          final rect = tester.getRect(finder.first);
+          return rect.bottom <= size.height;
+        });
         expect(visible.length, greaterThanOrEqualTo(4));
       });
     });
