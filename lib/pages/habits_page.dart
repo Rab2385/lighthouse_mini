@@ -207,9 +207,12 @@ class _HabitsPageState extends State<HabitsPage> with WidgetsBindingObserver {
                     final habit = archived[index];
 
                     return ListTile(
-                      leading: Text(
-                        habit.emoji,
-                        style: const TextStyle(fontSize: 23),
+                      // The name says it all; the symbol is decoration.
+                      leading: ExcludeSemantics(
+                        child: Text(
+                          habit.emoji,
+                          style: const TextStyle(fontSize: 23),
+                        ),
                       ),
                       title: Text(habit.name),
                       trailing: Wrap(
@@ -521,10 +524,7 @@ class _HabitViewToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<bool>(
       showSelectedIcon: false,
-      style: const ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
+      // Standard density: each segment needs a full 48 dp tap target.
       segments: [
         ButtonSegment(
           value: true,
@@ -674,7 +674,11 @@ class _HabitCompactRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(habit.emoji, style: const TextStyle(fontSize: 22)),
+          // Decoration next to the name: screen readers would read it as
+          // "briefcase, Work".
+          ExcludeSemantics(
+            child: Text(habit.emoji, style: const TextStyle(fontSize: 22)),
+          ),
           SizedBox(width: narrow ? 10 : 14),
           Expanded(
             child: narrow
@@ -692,6 +696,7 @@ class _HabitCompactRow extends StatelessWidget {
             caption: strings.yesterday,
             date: yesterday,
             habitId: habit.id,
+            habitName: habit.name,
             controller: controller,
           ),
           const SizedBox(width: 6),
@@ -700,6 +705,7 @@ class _HabitCompactRow extends StatelessWidget {
             caption: strings.today,
             date: today,
             habitId: habit.id,
+            habitName: habit.name,
             controller: controller,
             isToday: true,
           ),
@@ -722,6 +728,7 @@ class _CompactToggle extends StatelessWidget {
     required this.caption,
     required this.date,
     required this.habitId,
+    required this.habitName,
     required this.controller,
     this.isToday = false,
   });
@@ -730,6 +737,9 @@ class _CompactToggle extends StatelessWidget {
   final String caption;
   final DateTime date;
   final String habitId;
+
+  /// For screen readers: "Water, heute" instead of "Heute, Mi.".
+  final String habitName;
   final LighthouseController controller;
   final bool isToday;
 
@@ -738,64 +748,75 @@ class _CompactToggle extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final completed = controller.isHabitCompleted(habitId: habitId, date: date);
 
+    void toggle() {
+      HapticFeedback.selectionClick();
+      controller.toggleHabit(habitId: habitId, date: date);
+    }
+
     // The whole column is the tap target (>= 48dp), not just the 26dp circle,
     // so tapping the "Heute" label toggles the day too.
-    return SizedBox(
-      width: 54,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            HapticFeedback.selectionClick();
-            controller.toggleHabit(habitId: habitId, date: date);
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  caption,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: isToday
-                        ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: completed ? colorScheme.primary : Colors.transparent,
-                    border: Border.all(
-                      width: 1.5,
-                      color: completed
+    return _HabitDaySemantics(
+      habitName: habitName,
+      date: date,
+      controller: controller,
+      completed: completed,
+      onToggle: toggle,
+      child: SizedBox(
+        width: 54,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: toggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    caption,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: isToday
                           ? colorScheme.primary
-                          : colorScheme.primary.withValues(alpha: 0.55),
+                          : colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  child: completed
-                      ? Icon(
-                          Icons.check,
-                          size: 16,
-                          color: colorScheme.onPrimary,
-                        )
-                      : null,
-                ),
-              ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: completed
+                          ? colorScheme.primary
+                          : Colors.transparent,
+                      border: Border.all(
+                        width: 1.5,
+                        color: completed
+                            ? colorScheme.primary
+                            : colorScheme.primary.withValues(alpha: 0.55),
+                      ),
+                    ),
+                    child: completed
+                        ? Icon(
+                            Icons.check,
+                            size: 16,
+                            color: colorScheme.onPrimary,
+                          )
+                        : null,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -956,6 +977,7 @@ class _FrozenHabitColumn extends StatelessWidget {
                         width: cellWidth,
                         child: _HabitDayCell(
                           habitId: habit.id,
+                          habitName: habit.name,
                           date: yesterday,
                           controller: controller,
                           width: cellWidth,
@@ -967,6 +989,7 @@ class _FrozenHabitColumn extends StatelessWidget {
                         isToday: true,
                         child: _HabitDayCell(
                           habitId: habit.id,
+                          habitName: habit.name,
                           date: today,
                           controller: controller,
                           width: cellWidth,
@@ -1057,7 +1080,9 @@ class _HabitNameCell extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             children: [
-              Text(habit.emoji, style: const TextStyle(fontSize: 17)),
+              ExcludeSemantics(
+                child: Text(habit.emoji, style: const TextStyle(fontSize: 17)),
+              ),
               const SizedBox(width: 7),
               Expanded(
                 child: Text(
@@ -1080,7 +1105,9 @@ class _HabitNameCell extends StatelessWidget {
       padding: const EdgeInsets.only(left: 12),
       child: Row(
         children: [
-          Text(habit.emoji, style: const TextStyle(fontSize: 19)),
+          ExcludeSemantics(
+            child: Text(habit.emoji, style: const TextStyle(fontSize: 19)),
+          ),
           const SizedBox(width: 9),
           Expanded(
             child: Tooltip(
@@ -1166,6 +1193,7 @@ class _MonthGridColumn extends StatelessWidget {
                 for (var day = 1; day <= daysInMonth; day++)
                   _HabitDayCell(
                     habitId: habit.id,
+                    habitName: habit.name,
                     date: DateTime(
                       selectedMonth.year,
                       selectedMonth.month,
@@ -1267,6 +1295,7 @@ class _TotalColumn extends StatelessWidget {
 class _HabitDayCell extends StatelessWidget {
   const _HabitDayCell({
     required this.habitId,
+    required this.habitName,
     required this.date,
     required this.controller,
     this.width = 44,
@@ -1275,6 +1304,7 @@ class _HabitDayCell extends StatelessWidget {
   });
 
   final String habitId;
+  final String habitName;
   final DateTime date;
   final LighthouseController controller;
   final double width;
@@ -1303,50 +1333,101 @@ class _HabitDayCell extends StatelessWidget {
         ? colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
         : null;
 
-    return SizedBox(
-      width: width,
-      height: double.infinity,
-      child: Tooltip(
-        message: disabled
-            ? controller.strings.futureDaysLocked
-            : completed
-            ? controller.strings.removeMark
-            : controller.strings.markDay,
-        child: Ink(
-          color: cellColor,
-          child: InkWell(
-            // The whole cell is the tap target, not just the 22px circle.
-            onTap: disabled
-                ? null
-                : () {
-                    HapticFeedback.selectionClick();
-                    controller.toggleHabit(habitId: habitId, date: date);
-                  },
-            child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: completed ? colorScheme.primary : Colors.transparent,
-                  border: Border.all(
-                    width: 1.5,
-                    color: disabled
-                        ? colorScheme.outlineVariant
-                        : completed
-                        ? colorScheme.primary
-                        : colorScheme.primary.withValues(alpha: 0.55),
+    void toggle() {
+      HapticFeedback.selectionClick();
+      controller.toggleHabit(habitId: habitId, date: date);
+    }
+
+    final strings = controller.strings;
+    final label = strings.habitDayLabel(habitName, date, controller.today);
+
+    return _HabitDaySemantics(
+      habitName: habitName,
+      date: date,
+      controller: controller,
+      completed: completed,
+      onToggle: disabled ? null : toggle,
+      child: SizedBox(
+        width: width,
+        height: double.infinity,
+        child: Tooltip(
+          // Which habit and day, for mouse users scanning a long grid.
+          message: disabled ? '$label · ${strings.futureDaysLocked}' : label,
+          child: Ink(
+            color: cellColor,
+            child: InkWell(
+              // The whole cell is the tap target, not just the 22px circle.
+              onTap: disabled ? null : toggle,
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: completed ? colorScheme.primary : Colors.transparent,
+                    border: Border.all(
+                      width: 1.5,
+                      color: disabled
+                          ? colorScheme.outlineVariant
+                          : completed
+                          ? colorScheme.primary
+                          : colorScheme.primary.withValues(alpha: 0.55),
+                    ),
                   ),
+                  child: completed
+                      ? Icon(
+                          Icons.check,
+                          size: 14,
+                          color: colorScheme.onPrimary,
+                        )
+                      : null,
                 ),
-                child: completed
-                    ? Icon(Icons.check, size: 14, color: colorScheme.onPrimary)
-                    : null,
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// One habit on one day, as screen readers hear it: a checkbox called
+/// "Water, heute" that is ticked or not, and disabled for days to come.
+class _HabitDaySemantics extends StatelessWidget {
+  const _HabitDaySemantics({
+    required this.habitName,
+    required this.date,
+    required this.controller,
+    required this.completed,
+    required this.onToggle,
+    required this.child,
+  });
+
+  final String habitName;
+  final DateTime date;
+  final LighthouseController controller;
+  final bool completed;
+
+  /// Null for days that can't be marked yet.
+  final VoidCallback? onToggle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = controller.strings;
+
+    return Semantics(
+      container: true,
+      button: true,
+      checked: completed,
+      enabled: onToggle != null,
+      label: strings.habitDayLabel(habitName, date, controller.today),
+      hint: onToggle == null ? strings.futureDaysLocked : null,
+      onTap: onToggle,
+      // One complete label instead of "Gestern", "Di." and the tooltip.
+      excludeSemantics: true,
+      child: child,
     );
   }
 }

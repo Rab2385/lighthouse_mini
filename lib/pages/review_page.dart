@@ -620,7 +620,9 @@ class _HabitReviewRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
+          ExcludeSemantics(
+            child: Text(emoji, style: const TextStyle(fontSize: 22)),
+          ),
           const SizedBox(width: 12),
           // Name and bar share the width, so on a 320 px phone the bar
           // doesn't shrink to a sliver next to a fixed-width name.

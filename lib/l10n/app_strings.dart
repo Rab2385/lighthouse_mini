@@ -129,8 +129,27 @@ class AppStrings {
   String nThisMonth(int n) => _p('$n diesen Monat', '$n this month');
   String get futureDaysLocked =>
       _p('Zukünftige Tage sind gesperrt.', 'Future days are locked.');
-  String get removeMark => _p('Markierung entfernen', 'Remove mark');
-  String get markDay => _p('Tag markieren', 'Mark day');
+
+  /// "Water, heute" / "Water, Dienstag, 29. September": one habit on one
+  /// day, for screen readers and the grid's tooltips.
+  String habitDayLabel(String habit, DateTime date, DateTime today) {
+    final diff = DateTime.utc(
+      today.year,
+      today.month,
+      today.day,
+    ).difference(DateTime.utc(date.year, date.month, date.day)).inDays;
+    if (diff == 0) {
+      return '$habit, ${_p('heute', 'today')}';
+    }
+    if (diff == 1) {
+      return '$habit, ${_p('gestern', 'yesterday')}';
+    }
+    final weekday = weekdaysLong[date.weekday - 1];
+    final month = monthNames[date.month - 1];
+    return _en
+        ? '$habit, $weekday, $month ${date.day}'
+        : '$habit, $weekday, ${date.day}. $month';
+  }
 
   // ---- Review ------------------------------------------------------
   String get recurringEntries =>
