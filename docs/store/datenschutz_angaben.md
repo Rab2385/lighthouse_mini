@@ -39,9 +39,15 @@ Weitere Punkte unter „App-Inhalte“:
 - **Berechtigungen:** Mitteilungen (abendliche Erinnerung, optional), Vibration und Start nach
   Geräteneustart (Erinnerung wiederherstellen).
 
+## In der App
+Apple verlangt die Datenschutzerklärung auch **in der App** (Richtlinie 5.1.1): Sie steht unter
+**Einstellungen → Privatsphäre → Datenschutzerklärung**, daneben das **Impressum** – offline, auf
+Deutsch oder Englisch je nach App-Sprache. Die Texte liegen in `lib/legal/legal_texts.dart`.
+
 ## Vor dem Einreichen ausfüllen
-- [ ] In `web/datenschutz.html` und `web/impressum.html` alle gelb markierten Platzhalter
-      (`<mark class="todo">`) ersetzen: Name, Anschrift, E-Mail, Hosting-Anbieter, Log-Löschfrist.
+- [ ] Platzhalter ersetzen (Name, Anschrift, E-Mail, Hosting-Anbieter, Log-Löschfrist) – an drei
+      Stellen: `lib/legal/legal_texts.dart` (`LegalContact`), `web/datenschutz.html`,
+      `web/impressum.html`. Der Test `test/legal_test.dart` meldet, wenn sie auseinanderlaufen.
 - [ ] Web-App mit beiden Seiten veröffentlichen, sodass die URL öffentlich erreichbar ist.
 - [ ] URL in App Store Connect und Play Console eintragen.
 

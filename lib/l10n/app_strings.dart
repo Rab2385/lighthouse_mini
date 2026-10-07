@@ -183,6 +183,8 @@ class AppStrings {
   String get nameHint => _p('Zum Beispiel Robert', 'For example Robert');
   String get nameSaved => _p('Name gespeichert.', 'Name saved.');
   String get privacy => _p('Privatsphäre', 'Privacy');
+  String get privacyPolicy => _p('Datenschutzerklärung', 'Privacy policy');
+  String get legalNotice => _p('Impressum', 'Legal notice');
   String get privacyText => _p(
     'Alle Einträge werden derzeit nur lokal auf diesem Gerät '
         'gespeichert. Es werden keine Journaltexte an einen Server '
