@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
+import '../legal/legal_texts.dart';
 import '../state/lighthouse_controller.dart';
 import '../widgets/backup_card.dart';
 import '../widgets/page_title.dart';
+import 'legal_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.controller});
@@ -300,12 +302,34 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     sectionCard(
                       title: strings.privacy,
-                      child: Row(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.lock_outline, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text(strings.privacyText)),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.lock_outline, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(strings.privacyText)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          _LegalLink(
+                            icon: Icons.policy_outlined,
+                            label: strings.privacyPolicy,
+                            onTap: () => LegalPage.open(
+                              context,
+                              privacyPolicy(widget.controller.languageCode),
+                            ),
+                          ),
+                          _LegalLink(
+                            icon: Icons.info_outline,
+                            label: strings.legalNotice,
+                            onTap: () => LegalPage.open(
+                              context,
+                              legalNotice(widget.controller.languageCode),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -405,6 +429,30 @@ class _ReminderCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A row in the Privacy card that opens one of the legal texts.
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(label),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 }
