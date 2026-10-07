@@ -45,10 +45,12 @@ Apple verlangt die Datenschutzerklärung auch **in der App** (Richtlinie 5.1.1):
 Deutsch oder Englisch je nach App-Sprache. Die Texte liegen in `lib/legal/legal_texts.dart`.
 
 ## Vor dem Einreichen ausfüllen
-- [ ] Platzhalter ersetzen (Name, Anschrift, E-Mail, Hosting-Anbieter, Log-Löschfrist) – an drei
+- [ ] Platzhalter ersetzen (Anschrift, E-Mail) – an drei
       Stellen: `lib/legal/legal_texts.dart` (`LegalContact`), `web/datenschutz.html`,
       `web/impressum.html`. Der Test `test/legal_test.dart` meldet, wenn sie auseinanderlaufen.
 - [ ] Web-App mit beiden Seiten veröffentlichen, sodass die URL öffentlich erreichbar ist.
+      **Dann** kommt ein kurzer Abschnitt zum Hosting dazu (z. B. GitHub Pages: IP-Adressen,
+      Server-Protokolle). Solange die App nur lokal läuft, gibt es keinen.
 - [ ] URL in App Store Connect und Play Console eintragen.
 
 Hinweis: Die Texte sind eine sorgfältige Vorlage, ersetzen aber keine Rechtsberatung.

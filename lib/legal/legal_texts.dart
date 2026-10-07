@@ -7,17 +7,15 @@ library;
 
 /// Who is responsible for the app. Placeholders in square brackets are
 /// shown highlighted until they're filled in.
+///
+/// There is no hosting section: the app runs entirely on the user's device.
+/// Once the web app or these pages are published somewhere, that host
+/// processes IP addresses and logs and needs its own short section.
 abstract final class LegalContact {
-  static const String name = '[Vorname Nachname]';
+  static const String name = 'Robert Braun';
   static const String street = '[Straße Hausnummer]';
   static const String city = '[PLZ Ort]';
   static const String email = '[kontakt@beispiel.de]';
-
-  /// The web host that serves the web app and these pages.
-  static const String host = '[Name und Anschrift des Hosters]';
-
-  /// How long the host keeps server logs.
-  static const String logDays = '[7]';
 }
 
 /// "Oktober 2026" / "October 2026": when the texts last changed.
@@ -127,31 +125,20 @@ const _privacyDe = LegalDocument(
           'Apple bzw. Google uns diese nur in zusammengefasster Form bereit. '
           'Näheres findest du in den Datenschutzhinweisen von Apple und Google.',
     ]),
-    LegalSection('7. Web-App und Website', [
-      'Beim Aufruf der Web-App und unserer Website verarbeitet unser '
-          'Hosting-Anbieter ${LegalContact.host} technisch notwendige Daten, '
-          'die dein Browser automatisch übermittelt (IP-Adresse, Datum und '
-          'Uhrzeit, aufgerufene Datei, Browser-Typ). Das ist erforderlich, um '
-          'die Seiten auszuliefern und den Betrieb sicher zu halten (Art. 6 '
-          'Abs. 1 lit. f DSGVO). Diese Server-Logdaten werden nach '
-          '${LegalContact.logDays} Tagen gelöscht. Schriften und Programmteile '
-          'der Web-App werden von unserem eigenen Server geladen, nicht von '
-          'Drittanbietern.',
-    ]),
-    LegalSection('8. Kontakt per E-Mail', [
+    LegalSection('7. Kontakt per E-Mail', [
       'Wenn du uns schreibst, verwenden wir deine E-Mail-Adresse und deine '
           'Nachricht nur, um dein Anliegen zu beantworten (Art. 6 Abs. 1 lit. b '
           'bzw. f DSGVO), und löschen sie, sobald sie dafür nicht mehr nötig '
           'sind.',
     ]),
-    LegalSection('9. Deine Daten löschen', [
+    LegalSection('8. Deine Daten löschen', [
       'Da alles auf deinem Gerät liegt, hast du die volle Kontrolle: Löschen '
           'in der App („Einstellungen → Alle lokalen Daten löschen“), App '
           'deinstallieren bzw. in der Web-App die Website-Daten im Browser '
           'löschen entfernt alle Einträge endgültig. Von dir gespeicherte '
           'Backup-Dateien löschst du selbst.',
     ]),
-    LegalSection('10. Deine Rechte', [
+    LegalSection('9. Deine Rechte', [
       'Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), '
           'Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), '
           'Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21). Wende dich '
@@ -160,7 +147,7 @@ const _privacyDe = LegalDocument(
           'deines Wohnorts. Bitte beachte: Deine Einträge liegen nicht bei uns '
           '– wir können dazu also keine Auskunft geben oder sie löschen.',
     ]),
-    LegalSection('11. Änderungen', [
+    LegalSection('10. Änderungen', [
       'Wenn sich die App so ändert, dass Daten anders verarbeitet werden, '
           'passen wir diese Erklärung vorher an. Das Datum oben zeigt den '
           'aktuellen Stand.',
@@ -209,13 +196,6 @@ const _privacyEn = LegalDocument(
           'about downloads under their own responsibility; see their privacy '
           'policies.',
     ]),
-    LegalSection('Web app and website', [
-      'Our host ${LegalContact.host} processes technically necessary data (IP '
-          'address, time, requested file, browser type) to deliver the web app '
-          'and website (Art. 6(1)(f) GDPR). Server logs are deleted after '
-          '${LegalContact.logDays} days. Fonts and code are served from our own '
-          'server.',
-    ]),
     LegalSection('Deleting your data and your rights', [
       'Deleting your data in the app (Settings → Delete all local data), '
           'uninstalling it, or clearing the site data in your browser removes '
@@ -236,11 +216,6 @@ const _noticeDe = LegalDocument(
     LegalSection('Kontakt', ['E-Mail: ${LegalContact.email}']),
     LegalSection('Verantwortlich für den Inhalt', [
       '${LegalContact.name}, Anschrift wie oben',
-    ]),
-    LegalSection('Haftung für Links', [
-      'Die App und unsere Website enthalten Links zu Angeboten Dritter (z. B. '
-          'App Store, Google Play). Für deren Inhalte sind ausschließlich die '
-          'jeweiligen Anbieter verantwortlich.',
     ]),
   ],
 );

@@ -107,7 +107,7 @@ void main() {
       // Any overflow while scrolling through fails the test on its own.
       await tester.fling(find.byType(ListView), const Offset(0, -6000), 3000);
       await tester.pumpAndSettle();
-      expect(find.text('11. Änderungen'), findsOneWidget);
+      expect(find.text('10. Änderungen'), findsOneWidget);
     });
   });
 
@@ -142,8 +142,6 @@ void main() {
         expect(privacy, contains(value), reason: 'datenschutz.html: $value');
         expect(notice, contains(value), reason: 'impressum.html: $value');
       }
-      expect(privacy, contains(LegalContact.host));
-      expect(privacy, contains(LegalContact.logDays));
     });
   });
 }
