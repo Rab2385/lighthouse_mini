@@ -47,7 +47,6 @@ class MonthHeader extends StatelessWidget {
       children: [
         if (showMonthControls) ...[
           IconButton.outlined(
-            visualDensity: VisualDensity.compact,
             tooltip: strings.previousMonth,
             onPressed: onPreviousMonth,
             icon: const Icon(Icons.chevron_left),
@@ -61,13 +60,11 @@ class MonthHeader extends StatelessWidget {
             ),
           ),
           IconButton.outlined(
-            visualDensity: VisualDensity.compact,
             tooltip: strings.nextMonth,
             onPressed: onNextMonth,
             icon: const Icon(Icons.chevron_right),
           ),
           IconButton.outlined(
-            visualDensity: VisualDensity.compact,
             tooltip: strings.today,
             onPressed: onToday,
             icon: const Icon(Icons.today_outlined),
@@ -114,7 +111,6 @@ class MonthHeader extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          visualDensity: VisualDensity.compact,
           tooltip: strings.previousMonth,
           onPressed: onPreviousMonth,
           icon: const Icon(Icons.chevron_left),
@@ -133,13 +129,11 @@ class MonthHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          visualDensity: VisualDensity.compact,
           tooltip: strings.nextMonth,
           onPressed: onNextMonth,
           icon: const Icon(Icons.chevron_right),
         ),
         IconButton(
-          visualDensity: VisualDensity.compact,
           tooltip: strings.today,
           onPressed: onToday,
           icon: const Icon(Icons.today_outlined),

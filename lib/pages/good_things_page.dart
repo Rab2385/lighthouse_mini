@@ -296,7 +296,6 @@ class _GoodThingsPageState extends State<GoodThingsPage>
               onNextMonth: _canShowNextMonth ? _showNextMonth : null,
               onToday: _goToToday,
               trailing: IconButton.outlined(
-                visualDensity: VisualDensity.compact,
                 tooltip: _searchOpen
                     ? _strings.clearSearch
                     : _strings.searchGoodThings,
@@ -1196,7 +1195,6 @@ class _MemoryCard extends StatelessWidget {
               ),
               IconButton(
                 tooltip: strings.dismiss,
-                visualDensity: VisualDensity.compact,
                 onPressed: onDismiss,
                 icon: const Icon(Icons.close, size: 18),
               ),

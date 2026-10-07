@@ -278,7 +278,6 @@ class BackupReminderBanner extends StatelessWidget {
             ),
             IconButton(
               tooltip: strings.dismiss,
-              visualDensity: VisualDensity.compact,
               onPressed: controller.dismissBackupReminder,
               icon: const Icon(Icons.close, size: 18),
             ),
